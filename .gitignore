@@ -1,1 +1,29 @@
-node_modules
+# Whitelist pattern https://jasonstitt.com/gitignore-whitelisting-patterns
+*
+!*/
+
+# Add meta
+!LICENSE
+!README.md
+
+# Add git & GitHub
+!.git
+!.gitignore
+!.github
+
+# Add Devcontainer
+!.devcontainer/devcontainer.json
+!.devcontainer/docker-compose.yml
+!.devcontainer/Dockerfile
+
+# Add Devtools
+!webpack.vendor.config.js
+!package-lock.json
+!package.json
+
+# Add source files
+!src/server.js
+!src/client/**
+!src/server/**
+
+dist/

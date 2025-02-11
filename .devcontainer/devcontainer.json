@@ -1,0 +1,7 @@
+{
+	"name": "Webapp",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "devcontainer",
+    "workspaceFolder": "/workspace",
+	"postCreateCommand": "npm install"
+}
