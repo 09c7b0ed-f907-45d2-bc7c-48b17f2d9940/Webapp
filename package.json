@@ -12,7 +12,10 @@
   "description": "",
   "dependencies": {
     "chart.js": "^4.4.3",
+    "dotenv": "^16.4.7",
     "express": "^4.19.2",
+    "express-session": "^1.18.1",
+    "keycloak-connect": "^26.1.1",
     "node-fetch": "^2.7.0",
     "uuidv4": "^6.2.13",
     "ws": "^8.17.0"

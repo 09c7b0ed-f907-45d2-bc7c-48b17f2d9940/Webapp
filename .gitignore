@@ -22,8 +22,15 @@
 !package.json
 
 # Add source files
+!src/client/css/style.css
+!src/client/js/admin.js
+!src/client/js/chatbox.js
+!src/client/js/client.js
+!src/client/js/socket.js
+!src/client/js/viz.js
+!src/client/admin.html
+!src/client/index.html
+!src/server/data/args.json
+!src/server/data/data.json
+!src/server/rasaClient.js
 !src/server.js
-!src/client/**
-!src/server/**
-
-dist/

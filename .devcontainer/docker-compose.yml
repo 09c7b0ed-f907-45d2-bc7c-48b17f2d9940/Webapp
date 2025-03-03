@@ -1,9 +1,22 @@
 services:
-  devcontainer:
+  webapp:
     build: 
       context: ..
       dockerfile: .devcontainer/Dockerfile
     volumes:
       - ..:/workspace:cached
+    depends_on:
+      - vault
     ports:
       - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  vault:
+    image: hashicorp/vault:latest
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: root
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

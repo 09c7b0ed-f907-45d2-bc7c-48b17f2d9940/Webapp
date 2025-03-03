@@ -2,8 +2,8 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 
-const RASA_URL = 'http://localhost:5005/webhooks/rest/webhook';
-const ACTION_URL = 'http://localhost:5055/webhook';
+const RASA_URL = 'http://host.docker.internal:5005/webhooks/rest/webhook';
+const ACTION_URL = 'http://host.docker.internal:5055/webhook';
 
 //One file per client to solve concurrency problems
 // Function to setup logging for a user
