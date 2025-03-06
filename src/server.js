@@ -6,7 +6,6 @@ const url = require('url');
 const fs = require('fs');
 const path = require('path');
 const webpack = require('webpack');
-const { v4: uuidv4 } = require('uuid'); // Import uuid to generate unique IDs
 const Keycloak = require('keycloak-connect');
 const session = require('express-session');
 const axios = require('axios'); // Import axios for HTTP requests
@@ -76,8 +75,8 @@ app.get('/', keycloak.protect(), async (req, res) => {
       req.session.userId = userId;
 
       await axios.post(
-        process.env.VAULT_URL,
-        { data: { token: jwt, userId: userId } },
+        process.env.VAULT_URL+`/v1/secret/data/tokens/${userId}`,
+        { data: { token: jwt } },
         { headers: { 'X-Vault-Token': process.env.VAULT_TOKEN } }
       );
       console.log('JWT and userId stored in Vault successfully');

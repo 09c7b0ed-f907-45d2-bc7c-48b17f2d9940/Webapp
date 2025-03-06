@@ -1,0 +1,12 @@
+# Whitelist pattern https://jasonstitt.com/gitignore-whitelisting-patterns
+*
+!*/
+
+# Add requirments
+!/package-lock.json
+!/package.json
+
+# Add source files
+!/src/**
+/src/**/dist
+/src/**/logs

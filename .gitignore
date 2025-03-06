@@ -3,34 +3,29 @@
 !*/
 
 # Add meta
-!LICENSE
-!README.md
+!/LICENSE
+!/README.md
 
 # Add git & GitHub
-!.git
-!.gitignore
-!.github
+!/.git
+!/.gitignore
+!/.github/**
 
 # Add Devcontainer
-!.devcontainer/devcontainer.json
-!.devcontainer/docker-compose.yml
-!.devcontainer/Dockerfile
+!/.devcontainer/devcontainer.json
+!/.devcontainer/docker-compose.yml
+!/.devcontainer/Dockerfile
+
+# Add Docker
+!/.dockerignore
+!/Dockerfile
 
 # Add Devtools
-!webpack.vendor.config.js
-!package-lock.json
-!package.json
+!/webpack.vendor.config.js
+!/package-lock.json
+!/package.json
 
 # Add source files
-!src/client/css/style.css
-!src/client/js/admin.js
-!src/client/js/chatbox.js
-!src/client/js/client.js
-!src/client/js/socket.js
-!src/client/js/viz.js
-!src/client/admin.html
-!src/client/index.html
-!src/server/data/args.json
-!src/server/data/data.json
-!src/server/rasaClient.js
-!src/server.js
+!/src/**
+/src/**/dist
+/src/**/logs
