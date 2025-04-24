@@ -4,5 +4,8 @@
 	"service": "webapp",
 	"workspaceFolder": "/workspace",
 	"postCreateCommand": "npm install",
-	"forwardPorts": [3000, 8200]
+	"forwardPorts": [
+		3000,
+		8200
+	]
 }
