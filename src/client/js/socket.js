@@ -6,7 +6,11 @@ let ws;
 
 export function connectWebSocket(isAdmin) {
   return new Promise((resolve, reject) => {
-    ws = new WebSocket(`ws://localhost:3000?admin=${isAdmin}`);
+    if (!process.env.WEBAPP_URL) {
+      throw new Error('WEBAPP_URL environment variable is not set');
+    }
+    const WEBAPP_WS_URL = process.env.WEBAPP_WS_URL;
+    ws = new WebSocket(`${WEBAPP_WS_URL}?admin=${isAdmin}`);
 
       ws.onopen = () => {
         console.log(`Connected to the WebSocket server as ${isAdmin ? 'admin' : 'user'}`);
