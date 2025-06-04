@@ -1,0 +1,6 @@
+{
+	"name": "Webshop",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "webshop",
+	"workspaceFolder": "/workspace"
+}

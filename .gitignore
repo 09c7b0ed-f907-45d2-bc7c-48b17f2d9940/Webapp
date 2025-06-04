@@ -1,0 +1,37 @@
+# Whitelist pattern https://jasonstitt.com/gitignore-whitelisting-patterns
+*
+!*/
+
+# Add meta
+!/LICENSE
+!/README.md
+
+# Add git & GitHub
+!/.git
+!/.gitignore
+!/.github/**
+
+# Add Devcontainer
+!/.devcontainer/devcontainer.json
+!/.devcontainer/docker-compose.yml
+!/.devcontainer/Dockerfile
+
+# Add vscode
+!/.vscode/tasks.json
+
+# Add Docker
+!/.dockerignore
+!/Dockerfile
+
+# Add Devtools
+!/package.json
+!/pnpm-lock.yaml
+!/postcss.config.mjs
+!/tsconfig.json
+!/next.config.ts
+!/next-env.d.ts
+!/eslint.config.mjs
+!/components.json
+
+# Add source files
+!/src/**

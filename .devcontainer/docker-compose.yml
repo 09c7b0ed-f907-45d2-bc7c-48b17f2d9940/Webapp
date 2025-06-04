@@ -1,0 +1,11 @@
+services:
+  webshop:
+    build: 
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ..:/workspace:cached
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
