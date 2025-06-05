@@ -6,6 +6,8 @@ Dockerfile
 README.md
 .eslintrc.*
 eslint.config.*
-postcss.config.*
-tailwind.config.*
 .vscode
+.env
+.env.*
+.DS_Store
+Thumbs.db
