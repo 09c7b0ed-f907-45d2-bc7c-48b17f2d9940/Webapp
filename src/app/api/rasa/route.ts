@@ -8,7 +8,7 @@ type RasaButton = {
 
 type RasaAttachment = {
   type: string;
-  payload: unknown; //Fix at somepoint if needed or delete if not
+  payload: unknown;
 };
 
 type CustomGraphPayload =
@@ -41,10 +41,19 @@ type RasaResponse = {
 
 const apiUrl = process.env.RASA_URL;
 
+function getSessionToken() {
+  return (async () => {
+    const sessionCookies = await cookies();
+    return (
+      sessionCookies.get("next-auth.session-token")?.value ||
+      sessionCookies.get("__Secure-next-auth.session-token")?.value
+    );
+  })();
+}
+
 export async function POST(req: NextRequest) {
   const { message } = await req.json();
-  const sessionCookies = await cookies();
-  const sessionToken = sessionCookies.get("next-auth.session-token")?.value;
+  const sessionToken = await getSessionToken();
 
   if (!sessionToken) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -65,14 +74,13 @@ export async function POST(req: NextRequest) {
     .map((item) => item.text?.trim())
     .filter(Boolean)
     .join('\n');
-    const custom = rasaData.find((r) => r.custom)?.custom ?? null;
+  const custom = rasaData.find((r) => r.custom)?.custom ?? null;
 
   return NextResponse.json({ reply, custom });
 }
 
 export async function GET() {
-  const sessionCookies = await cookies();
-  const sessionToken = sessionCookies.get("next-auth.session-token")?.value;
+  const sessionToken = await getSessionToken();
 
   if (!sessionToken) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -89,7 +97,7 @@ export async function GET() {
 
   const customMessages = (data.events as TrackerEvent[])
     .filter((e: TrackerEvent) => e.event === "bot" && e.custom)
-    .map((e: TrackerEvent) => e.custom); // filter for graph custom payloads only if needed
+    .map((e: TrackerEvent) => e.custom);
 
   return NextResponse.json({ history: customMessages });
 }
