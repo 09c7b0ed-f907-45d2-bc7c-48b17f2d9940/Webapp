@@ -32,6 +32,7 @@
 !/next-env.d.ts
 !/eslint.config.mjs
 !/components.json
+!/tailwind.config.js
 
 # Add source files
 !/src/**
