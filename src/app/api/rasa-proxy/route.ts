@@ -1,28 +1,39 @@
-import { getToken } from "next-auth/jwt";
+import { jwtVerify, createRemoteJWKSet } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(req: NextRequest) {
-  const token = await getToken({ req });
+const JWKS = createRemoteJWKSet(new URL(`${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/certs`));
 
-  if (!token?.accessToken) {
+export async function POST(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  const rawToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+  if (!rawToken) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const { operation, target, url, payload } = await req.json();
+  try {
+    // Just verify to ensure token is valid
+    await jwtVerify(rawToken, JWKS);
+  } catch (err) {
+    console.error("Invalid JWT:", err);
+    return new NextResponse("Unauthorized", { status: 401 });
+  }
 
-  if (operation !== "query" || target !== "graphql" || !url || !payload?.query) {
+  const { operation, target, url, payload: gqlPayload } = await req.json();
+
+  if (operation !== "query" || target !== "graphql" || !url || !gqlPayload?.query) {
     return new NextResponse("Invalid proxy request", { status: 400 });
   }
 
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${token.accessToken}`,
+      Authorization: `Bearer ${rawToken}`, // ✅ Fixed
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      query: payload.query,
-      variables: payload.variables ?? {},
+      query: gqlPayload.query,
+      variables: gqlPayload.variables ?? {},
     }),
   });
 

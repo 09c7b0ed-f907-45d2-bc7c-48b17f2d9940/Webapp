@@ -1,103 +1,38 @@
+import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 
-type RasaButton = {
-  title: string;
-  payload: string;
-};
-
-type RasaAttachment = {
-  type: string;
-  payload: unknown;
-};
-
-type CustomGraphPayload =
-  | {
-      type: "line";
-      data: {
-        labels: string[];
-        values: number[];
-      };
-    }
-  | {
-      type: "candlestick";
-      data: {
-        timestamps: string[];
-        open: number[];
-        high: number[];
-        low: number[];
-        close: number[];
-      };
-    };
-
-type RasaResponse = {
-  recipient_id: string;
-  text?: string;
-  image?: string;
-  buttons?: RasaButton[];
-  attachment?: RasaAttachment;
-  custom?: CustomGraphPayload;
-};
-
-const apiUrl = process.env.RASA_URL;
-
-function getSessionToken() {
-  return (async () => {
-    const sessionCookies = await cookies();
-    return (
-      sessionCookies.get("next-auth.session-token")?.value ||
-      sessionCookies.get("__Secure-next-auth.session-token")?.value
-    );
-  })();
-}
+const apiUrl = process.env.RASA_URL!;
 
 export async function POST(req: NextRequest) {
-  const { message } = await req.json();
-  const sessionToken = await getSessionToken();
+  const token = await getToken({ req });
 
-  if (!sessionToken) {
+  if (!token?.accessToken) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
+
+  const { message } = await req.json();
 
   const rasaRes = await fetch(`${apiUrl}/webhooks/rest/webhook`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
-      sender: sessionToken,
-      message: message,
+      sender: token.accessToken,
+      message,
     }),
   });
 
-  const rawJson = await rasaRes.text();
-  const rasaData: RasaResponse[] = JSON.parse(rawJson);
-  const reply = rasaData
-    .map((item) => item.text?.trim())
-    .filter(Boolean)
-    .join('\n');
-  const custom = rasaData.find((r) => r.custom)?.custom ?? null;
-
-  return NextResponse.json({ reply, custom });
-}
-
-export async function GET() {
-  const sessionToken = await getSessionToken();
-
-  if (!sessionToken) {
-    return new NextResponse("Unauthorized", { status: 401 });
-  }
-
-  const tracker = await fetch(`${process.env.RASA_URL}/conversations/${sessionToken}/tracker`);
-  const data = await tracker.json();
-
-  type TrackerEvent = {
-    event: string;
+  interface RasaMessage {
+    text?: string;
     custom?: unknown;
     [key: string]: unknown;
-  };
+  }
 
-  const customMessages = (data.events as TrackerEvent[])
-    .filter((e: TrackerEvent) => e.event === "bot" && e.custom)
-    .map((e: TrackerEvent) => e.custom);
+  const rasaData: RasaMessage[] = await rasaRes.json();
 
-  return NextResponse.json({ history: customMessages });
+  const reply = rasaData.map((m: RasaMessage) => m.text).filter(Boolean).join("\n");
+  const custom = rasaData.find((m: RasaMessage) => m.custom)?.custom ?? null;
+
+  return NextResponse.json({ reply, custom });
 }
