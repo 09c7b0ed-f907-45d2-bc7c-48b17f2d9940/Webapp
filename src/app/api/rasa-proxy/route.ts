@@ -1,8 +1,6 @@
 import { jwtVerify, createRemoteJWKSet } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 
-const JWKS = createRemoteJWKSet(new URL(`${process.env.KEYCLOAK_ISSUER}/protocol/openid-connect/certs`));
-
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const rawToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -11,8 +9,15 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
+  const issuer = process.env.KEYCLOAK_ISSUER;
+  if (!issuer) {
+    console.error("Missing KEYCLOAK_ISSUER environment variable");
+    return new NextResponse("Server misconfiguration", { status: 500 });
+  }
+
+  const JWKS = createRemoteJWKSet(new URL(`${issuer}/protocol/openid-connect/certs`));
+
   try {
-    // Just verify to ensure token is valid
     await jwtVerify(rawToken, JWKS);
   } catch (err) {
     console.error("Invalid JWT:", err);
@@ -28,7 +33,7 @@ export async function POST(req: NextRequest) {
   const res = await fetch(url, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${rawToken}`, // ✅ Fixed
+      Authorization: `Bearer ${rawToken}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
