@@ -11,8 +11,6 @@ export default withAuth(
         url.pathname = "/api/auth/signin";
         return NextResponse.redirect(url);
       }
-    } else {
-      console.log("Session does not have an 'accessTokenExpires' property.");
     }
 
     if (token?.error === "RefreshAccessTokenError") {

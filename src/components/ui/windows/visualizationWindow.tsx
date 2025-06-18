@@ -32,31 +32,29 @@ export default function VisualizationWindow() {
   });
 
   return (
-    <div className="h-full w-full p-4">
-      <Card className="w-full">
-        <CardContent className="p-4">
-          <h3 className="text-lg font-semibold mb-2">{chart.chartTitle}</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="bin" label={{ value: chart.xAxisLabel, position: "insideBottomRight", offset: -5 }} />
-              <YAxis label={{ value: chart.yAxisLabel, angle: -90, position: "insideLeft" }} />
-              <Tooltip />
-              <Legend />
-              {chart.series.map((s, i) => (
-                <Line
-                  key={s.label}
-                  type="monotone"
-                  dataKey={s.label}
-                  stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
-                  strokeWidth={2}
-                  dot={false}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+    <div className="h-full w-full flex flex-col flex-1">
+      <h3 className="text-lg font-semibold mb-2">{chart.chartTitle}</h3>
+      <div className="flex-1 min-h-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="bin" label={{ value: chart.xAxisLabel, position: "insideBottomRight", offset: -5 }} />
+            <YAxis label={{ value: chart.yAxisLabel, angle: -90, position: "insideLeft" }} />
+            <Tooltip />
+            <Legend />
+            {chart.series.map((s, i) => (
+              <Line
+                key={s.label}
+                type="monotone"
+                dataKey={s.label}
+                stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+                strokeWidth={2}
+                dot={false}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

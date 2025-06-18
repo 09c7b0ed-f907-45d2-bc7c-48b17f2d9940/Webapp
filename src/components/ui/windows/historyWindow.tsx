@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "@/store/useChatStore";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -39,49 +39,93 @@ export default function HistoryWindow() {
     setSelectedChartIndex(chartIndex);
   };
 
-  return (
-    <Carousel className="w-full h-full overflow-y-hidden">
-      <CarouselContent className="h-full">
-        {history.map((viz, historyIndex) =>
-          viz.charts.map((chart, chartIndex) => {
-            const refKey = `${historyIndex}-${chartIndex}`;
-            const isSelected =
-              visualization === viz && selectedChartIndex === chartIndex;
+  // Calculate number of cards per view based on container width/height
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [cardsPerView, setCardsPerView] = useState(1);
 
-            return (
-              <CarouselItem
-                key={refKey}
-                className="basis-full sm:basis-1/2 md:basis-1/3 lg:basis-1/4 xl:basis-1/5 min-w-0"
-              >
-                <div
-                  ref={(el) => {
-                    if (el) {
-                      el.dataset.refkey = refKey;
-                      chartRefs.current.push(el);
-                    }
+  useEffect(() => {
+    const updateCardsPerView = () => {
+      if (containerRef.current) {
+        const { width, height } = containerRef.current.getBoundingClientRect();
+        if (height > 0) {
+          setCardsPerView(Math.max(1, Math.floor(width / height)));
+        }
+      }
+    };
+
+    // Use ResizeObserver for more responsive updates
+    let resizeObserver: ResizeObserver | null = null;
+    if (containerRef.current) {
+      resizeObserver = new ResizeObserver(updateCardsPerView);
+      resizeObserver.observe(containerRef.current);
+    }
+    updateCardsPerView();
+
+    window.addEventListener("resize", updateCardsPerView);
+
+    return () => {
+      window.removeEventListener("resize", updateCardsPerView);
+      if (resizeObserver && containerRef.current) {
+        resizeObserver.unobserve(containerRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className="w-full h-full flex flex-col justify-center">
+      <Carousel className="flex-1 w-full h-full" opts={{ slidesToScroll: cardsPerView }}>
+        <CarouselContent className="h-full">
+          {history.map((viz, historyIndex) =>
+            viz.charts.map((chart, chartIndex) => {
+              const refKey = `${historyIndex}-${chartIndex}`;
+              const isSelected =
+                visualization === viz && selectedChartIndex === chartIndex;
+
+              return (
+                <CarouselItem
+                  key={refKey}
+                  style={{
+                    flex: `0 0 ${100 / cardsPerView}%`,
+                    maxWidth: `${100 / cardsPerView}%`,
+                    aspectRatio: "1 / 1",
+                    height: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
                   }}
-                  onClick={() => handleClick(viz, chartIndex)}
-                  className={clsx(
-                    "cursor-pointer transition-all duration-300",
-                    isSelected ? "ring-2 ring-blue-500 scale-[1.02]" : "hover:ring-1 hover:ring-muted"
-                  )}
+                  className="min-w-0"
                 >
-                  <Card>
-                    <CardContent className="p-4 text-sm">
-                      <div className="font-semibold truncate">{chart.chartTitle}</div>
-                      <div className="text-xs text-muted-foreground truncate">
-                        {chart.sourceMetricId}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </CarouselItem>
-            );
-          })
-        )}
-      </CarouselContent>
-      <CarouselPrevious />
-      <CarouselNext />
-    </Carousel>
+                  <div
+                    ref={(el) => {
+                      if (el) {
+                        el.dataset.refkey = refKey;
+                        chartRefs.current.push(el);
+                      }
+                    }}
+                    onClick={() => handleClick(viz, chartIndex)}
+                    className={clsx(
+                      "cursor-pointer transition-all duration-300 w-full h-full",
+                      isSelected ? "ring-2 ring-blue-500 scale-[1.02]" : "hover:ring-1 hover:ring-muted"
+                    )}
+                    style={{ height: "100%", aspectRatio: "1 / 1", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  >
+                    <Card className="w-full h-full flex flex-col justify-center">
+                      <CardContent className="p-4 text-sm flex flex-col justify-center h-full">
+                        <div className="font-semibold truncate">{chart.chartTitle}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {chart.sourceMetricId}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </CarouselItem>
+              );
+            })
+          )}
+        </CarouselContent>
+        <CarouselPrevious />
+        <CarouselNext />
+      </Carousel>
+    </div>
   );
 }
