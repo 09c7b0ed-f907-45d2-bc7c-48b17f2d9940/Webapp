@@ -32,7 +32,6 @@ export default function ChatMessageList({ messages }: Props) {
               sender={msg.sender === "user" ? "me" : "other"}
             />
           ))}
-          {/* Invisible div to scroll into view */}
           <div ref={endRef} />
         </div>
       </ScrollArea>

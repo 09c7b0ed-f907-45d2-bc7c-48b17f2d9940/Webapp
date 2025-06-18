@@ -36,3 +36,4 @@
 
 # Add source files
 !/src/**
+!/public/**

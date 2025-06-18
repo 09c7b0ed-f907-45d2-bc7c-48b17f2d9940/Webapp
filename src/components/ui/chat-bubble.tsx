@@ -14,7 +14,7 @@ export default function ChatBubble({
   const isMe = sender === "me";
 
   return (
-    <div className={cn("flex gap-2 items-end px-4", isMe ? "justify-end" : "justify-start")}>      
+    <div className={cn("flex gap-2 items-end px-1", isMe ? "justify-end" : "justify-start")}>      
       <div
         className={cn(
           "w-fit max-w-[90%] px-4 py-2 shadow-md",
