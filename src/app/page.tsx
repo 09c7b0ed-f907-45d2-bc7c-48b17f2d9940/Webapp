@@ -9,7 +9,7 @@ export default function HomePage() {
     <div className="h-full w-full">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={30}>
-          <div className="flex h-full items-center justify-center p-2">
+          <div className="flex h-full items-center justify-center pr-1 p-2">
             <Card className="h-full w-full">
                 <CardContent className="h-full w-full">
                     <ChatWindow />
@@ -17,11 +17,11 @@ export default function HomePage() {
             </Card>
           </div>
         </ResizablePanel>
-        <ResizableHandle />
+        <ResizableHandle className="min-w-1 bg-transparent" />
         <ResizablePanel defaultSize={70}>
           <ResizablePanelGroup direction="vertical" className="h-full">
             <ResizablePanel defaultSize={75}>
-              <div className="flex h-full items-center justify-center p-2">
+              <div className="flex h-full items-center justify-center pl-1 pb-1 p-2">
                 <Card className="h-full w-full">
                     <CardContent className="h-full w-full">
                         <VisualizationWindow />
@@ -29,9 +29,9 @@ export default function HomePage() {
                 </Card>
               </div>
             </ResizablePanel>
-            <ResizableHandle />
+            <ResizableHandle className="min-h-1 bg-transparent" />
             <ResizablePanel defaultSize={25}>
-              <div className="flex h-full items-center justify-center p-2">
+              <div className="flex h-full items-center justify-center pl-1 pt-1 p-2">
                 <Card className="h-full w-full">
                     <CardContent className="h-full w-full">
                         <HistoryWindow />

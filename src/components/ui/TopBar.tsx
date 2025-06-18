@@ -44,9 +44,12 @@ export default function TopBar() {
 	};
 
 	return (
-		<div className="w-full flex items-center justify-between px-4 py-2 border-b card-foreground">
-			<div className="flex items-center gap-2">
-				<Image src="/logo.png" alt="Logo" width={150} height={150} />
+		<div
+			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0"
+			id="sym:TopBar"
+		>
+			<div className="flex items-center gap-2 h-10">
+				<Image src="/logo.png" alt="Logo" width={629} height={179} style={{ height: "200%", width: "auto" }} />
 			</div>
 			<div className="flex items-center gap-4">
 				<Select
@@ -60,7 +63,7 @@ export default function TopBar() {
 						}
 					}}
 				>
-					<SelectTrigger className="w-[180px]">
+					<SelectTrigger>
 						<SelectValue placeholder="Theme" />
 					</SelectTrigger>
 					<SelectContent>
@@ -72,14 +75,14 @@ export default function TopBar() {
 					</SelectContent>
 				</Select>
 				<Button
-					className="border rounded px-2 py-1"
+					className="border rounded"
 					onClick={toggleDark}
 					aria-label="Toggle dark mode"
 				>
 					{dark ? "🌙 Dark" : "☀️ Light"}
 				</Button>
 				<Button
-					className="border rounded px-2 py-1"
+					className="border rounded"
 					onClick={() => signOut()}
 					aria-label="Logout"
 				>
