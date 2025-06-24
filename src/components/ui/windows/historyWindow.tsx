@@ -10,7 +10,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import type { CustomGraphPayload } from "@/store/useChatStore";
+import type { PlotCollection, LinePlot, BoxPlot } from "@/models/chartModels";
 import clsx from "clsx";
 
 export default function HistoryWindow() {
@@ -34,7 +34,7 @@ export default function HistoryWindow() {
     }
   }, [selectedChartIndex, visualization, history]);
 
-  const handleClick = (viz: CustomGraphPayload, chartIndex: number) => {
+  const handleClick = (viz: PlotCollection, chartIndex: number) => {
     setVisualization(viz);
     setSelectedChartIndex(chartIndex);
   };
@@ -75,8 +75,13 @@ export default function HistoryWindow() {
     <div ref={containerRef} className="w-full h-full flex flex-col justify-center">
       <Carousel className="flex-1 w-full h-full" opts={{ slidesToScroll: cardsPerView }}>
         <CarouselContent className="h-full">
-          {history.map((viz, historyIndex) =>
-            viz.charts.map((chart, chartIndex) => {
+          {history.map((viz, historyIndex) => {
+            // Flatten charts for this viz
+            const charts: ({ type: 'line', chart: LinePlot } | { type: 'box', chart: BoxPlot })[] = [
+              ...(viz.linePlots?.map((chart) => ({ type: 'line' as const, chart })) ?? []),
+              ...(viz.boxPlots?.map((chart) => ({ type: 'box' as const, chart })) ?? []),
+            ];
+            return charts.map((item, chartIndex) => {
               const refKey = `${historyIndex}-${chartIndex}`;
               const isSelected =
                 visualization === viz && selectedChartIndex === chartIndex;
@@ -111,17 +116,20 @@ export default function HistoryWindow() {
                   >
                     <Card className="w-full h-full flex flex-col justify-center">
                       <CardContent className="p-4 text-sm flex flex-col justify-center h-full">
-                        <div className="font-semibold truncate">{chart.chartTitle}</div>
+                        <div className="font-semibold truncate">{item.chart.chartTitle}</div>
                         <div className="text-xs text-muted-foreground truncate">
-                          {chart.sourceMetricId}
+                          {"sourceMetricId" in item.chart ? item.chart.sourceMetricId : ""}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {item.type === "box" ? "Box Plot" : "Line Plot"}
                         </div>
                       </CardContent>
                     </Card>
                   </div>
                 </CarouselItem>
               );
-            })
-          )}
+            });
+          })}
         </CarouselContent>
         <CarouselPrevious />
         <CarouselNext />

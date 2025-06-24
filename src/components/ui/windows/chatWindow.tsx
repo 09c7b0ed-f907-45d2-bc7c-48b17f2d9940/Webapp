@@ -43,8 +43,10 @@ export default function ChatWindow() {
     const { setVisualization, addToHistory, setSelectedChartIndex } = useChatStore.getState();
 
     if (data.custom) {
-      setVisualization(data.custom);
-      addToHistory(data.custom);
+      const chartsData = data.custom;
+
+      setVisualization(chartsData);
+      addToHistory(chartsData);
       setSelectedChartIndex(0);
     }
   };

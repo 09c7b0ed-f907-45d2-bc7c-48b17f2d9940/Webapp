@@ -1,21 +1,8 @@
 import { create } from 'zustand';
+import type { PlotCollection } from '@/models/chartModels';
 
-export type ChartData = {
-  chartTitle: string;
-  xAxisLabel: string;
-  yAxisLabel: string;
-  bins: number[];
-  series: {
-    label: string;
-    values: number[];
-  }[];
-  grouped: boolean;
-  sourceMetricId: string;
-};
-
-export type CustomGraphPayload = {
-  charts: ChartData[];
-};
+// Use PlotCollection for visualization and history
+export type CustomGraphPayload = PlotCollection;
 
 interface ChatStore {
   visualization: CustomGraphPayload | null;
@@ -26,7 +13,6 @@ interface ChatStore {
   selectedChartIndex: number | null;
   setSelectedChartIndex: (i: number) => void;
 }
-
 
 export const useChatStore = create<ChatStore>((set) => ({
   visualization: null,
