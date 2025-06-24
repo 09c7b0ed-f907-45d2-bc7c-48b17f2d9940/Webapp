@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -15,33 +15,51 @@ const themes = [
 	{ label: "Yellow", value: "yellow" },
 ];
 
-export default function TopBar() {
-	const [theme, setTheme] = useState<string>("default");
+function useLocalStorage<T>(key: string, defaultValue: T): [T, (value: T) => void] {
+	const [value, setValue] = useState<T>(defaultValue);
 
-	const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-		const value = e.target.value;
-		setTheme(value);
-		if (value && value !== "default") {
-			document.documentElement.setAttribute("data-theme", value);
-		} else {
-			document.documentElement.removeAttribute("data-theme");
+	useEffect(() => {
+		try {
+			const item = window.localStorage.getItem(key);
+			if (item) {
+				setValue(JSON.parse(item));
+			}
+		} catch (error) {
+			console.warn(`Error reading localStorage key "${key}":`, error);
+		}
+	}, [key]);
+
+	const setStoredValue = (newValue: T) => {
+		try {
+			setValue(newValue);
+			window.localStorage.setItem(key, JSON.stringify(newValue));
+		} catch (error) {
+			console.warn(`Error setting localStorage key "${key}":`, error);
 		}
 	};
 
-	const [dark, setDark] = useState<boolean>(
-		typeof window !== "undefined" && document.documentElement.classList.contains("dark")
-	);
+	return [value, setStoredValue];
+}
 
-	const toggleDark = () => {
-		setDark((prev) => {
-			if (!prev) {
-				document.documentElement.classList.add("dark");
-			} else {
-				document.documentElement.classList.remove("dark");
-			}
-			return !prev;
-		});
-	};
+export default function TopBar() {
+	const [theme, setTheme] = useLocalStorage("theme", "default");
+	const [dark, setDark] = useLocalStorage("darkMode", false);
+
+	useEffect(() => {
+		if (theme && theme !== "default") {
+			document.documentElement.setAttribute("data-theme", theme);
+		} else {
+			document.documentElement.removeAttribute("data-theme");
+		}
+	}, [theme]);
+
+	useEffect(() => {
+		if (dark) {
+			document.documentElement.classList.add("dark");
+		} else {
+			document.documentElement.classList.remove("dark");
+		}
+	}, [dark]);
 
 	return (
 		<div
@@ -52,17 +70,7 @@ export default function TopBar() {
 				<Image src="/logo.png" alt="Logo" width={629} height={179} style={{ height: "200%", width: "auto" }} />
 			</div>
 			<div className="flex items-center gap-4">
-				<Select
-					value={theme}
-					onValueChange={(value) => {
-						setTheme(value);
-						if (value && value !== "default") {
-							document.documentElement.setAttribute("data-theme", value);
-						} else {
-							document.documentElement.removeAttribute("data-theme");
-						}
-					}}
-				>
+				<Select value={theme} onValueChange={setTheme}>
 					<SelectTrigger>
 						<SelectValue placeholder="Theme" />
 					</SelectTrigger>
@@ -76,7 +84,7 @@ export default function TopBar() {
 				</Select>
 				<Button
 					className="border rounded"
-					onClick={toggleDark}
+					onClick={() => setDark(!dark)}
 					aria-label="Toggle dark mode"
 				>
 					{dark ? "🌙 Dark" : "☀️ Light"}
