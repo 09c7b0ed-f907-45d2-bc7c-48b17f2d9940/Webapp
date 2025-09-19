@@ -1,15 +1,21 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { getRasaUrlForRequest } from "@/lib/rasaConfig";
 
 export async function GET() {
-  const sessionCookies = await cookies();
-  const sessionToken = sessionCookies.get("next-auth.session-token")?.value;
+  const cookieStore = await cookies();
+  const headerStore = await headers();
+  const sessionToken = cookieStore.get("next-auth.session-token")?.value;
 
   if (!sessionToken) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const tracker = await fetch(`${process.env.RASA_URL}/conversations/${sessionToken}/tracker`);
+  const apiUrl = getRasaUrlForRequest(headerStore, new Map(cookieStore.getAll().map(c => [c.name, c.value])));
+  if (!apiUrl) {
+    return new NextResponse("Rasa not configured", { status: 500 });
+  }
+  const tracker = await fetch(`${apiUrl}/conversations/${sessionToken}/tracker`);
   const data = await tracker.json();
 
   type Event = { event: string; custom?: Record<string, unknown> };

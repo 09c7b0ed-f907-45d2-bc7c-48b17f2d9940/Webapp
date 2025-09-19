@@ -1,7 +1,6 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
-
-const apiUrl = process.env.RASA_URL!;
+import { getRasaUrlForRequest } from "@/lib/rasaConfig";
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req });
@@ -11,6 +10,11 @@ export async function POST(req: NextRequest) {
   }
 
   const { message } = await req.json();
+
+  const apiUrl = getRasaUrlForRequest(req.headers, new Map(req.cookies.getAll().map(c => [c.name, c.value])));
+  if (!apiUrl) {
+    return new NextResponse("Rasa not configured", { status: 500 });
+  }
 
   const rasaRes = await fetch(`${apiUrl}/webhooks/rest/webhook`, {
     method: "POST",

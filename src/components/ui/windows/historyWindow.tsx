@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/carousel";
 import type { PlotCollection, LinePlot, BoxPlot } from "@/models/chartModels";
 import clsx from "clsx";
+import { useTranslation } from 'react-i18next';
+import '@/i18n';
 
 export default function HistoryWindow() {
   const history = useChatStore((s) => s.history);
@@ -19,10 +21,10 @@ export default function HistoryWindow() {
   const setSelectedChartIndex = useChatStore((s) => s.setSelectedChartIndex);
   const selectedChartIndex = useChatStore((s) => s.selectedChartIndex);
   const visualization = useChatStore((s) => s.visualization);
+  const { t } = useTranslation('common');
 
   const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Scroll into view when a chart is selected
   useEffect(() => {
     if (selectedChartIndex !== null && visualization) {
       const historyIndex = history.findIndex((h) => h === visualization);
@@ -39,7 +41,6 @@ export default function HistoryWindow() {
     setSelectedChartIndex(chartIndex);
   };
 
-  // Calculate number of cards per view based on container width/height
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [cardsPerView, setCardsPerView] = useState(1);
 
@@ -53,7 +54,6 @@ export default function HistoryWindow() {
       }
     };
 
-    // Use ResizeObserver for more responsive updates
     let resizeObserver: ResizeObserver | null = null;
     if (containerRef.current) {
       resizeObserver = new ResizeObserver(updateCardsPerView);
@@ -76,7 +76,6 @@ export default function HistoryWindow() {
       <Carousel className="flex-1 w-full h-full" opts={{ slidesToScroll: cardsPerView }}>
         <CarouselContent className="h-full">
           {history.map((viz, historyIndex) => {
-            // Flatten charts for this viz
             const charts: ({ type: 'line', chart: LinePlot } | { type: 'box', chart: BoxPlot })[] = [
               ...(viz.linePlots?.map((chart) => ({ type: 'line' as const, chart })) ?? []),
               ...(viz.boxPlots?.map((chart) => ({ type: 'box' as const, chart })) ?? []),
@@ -121,7 +120,7 @@ export default function HistoryWindow() {
                           {"sourceMetricId" in item.chart ? item.chart.sourceMetricId : ""}
                         </div>
                         <div className="text-xs text-muted-foreground truncate">
-                          {item.type === "box" ? "Box Plot" : "Line Plot"}
+                          {item.type === "box" ? t('visualization.type.box') : t('visualization.type.line')}
                         </div>
                       </CardContent>
                     </Card>

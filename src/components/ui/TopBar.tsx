@@ -1,49 +1,54 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSettingsStore } from "@/store/useSettingsStore";
+import { useTranslation } from "react-i18next";
+import i18n from "../../i18n";
+import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/locales/config";
 
 const themes = [
-	{ label: "Default", value: "default" },
-	{ label: "RES-Q", value: "resq" },
-	{ label: "Green", value: "green" },
-	{ label: "Red", value: "red" },
-	{ label: "Magenta", value: "magenta" },
-	{ label: "Blue", value: "blue" },
-	{ label: "Yellow", value: "yellow" },
-];
+	{ key: "topbar.theme.default", value: "default" },
+	{ key: "topbar.theme.resq", value: "resq" },
+	{ key: "topbar.theme.green", value: "green" },
+	{ key: "topbar.theme.red", value: "red" },
+	{ key: "topbar.theme.magenta", value: "magenta" },
+	{ key: "topbar.theme.blue", value: "blue" },
+	{ key: "topbar.theme.yellow", value: "yellow" },
+] as const;
 
-function useLocalStorage<T>(key: string, defaultValue: T): [T, (value: T) => void] {
-	const [value, setValue] = useState<T>(defaultValue);
-
-	useEffect(() => {
-		try {
-			const item = window.localStorage.getItem(key);
-			if (item) {
-				setValue(JSON.parse(item));
-			}
-		} catch (error) {
-			console.warn(`Error reading localStorage key "${key}":`, error);
-		}
-	}, [key]);
-
-	const setStoredValue = (newValue: T) => {
-		try {
-			setValue(newValue);
-			window.localStorage.setItem(key, JSON.stringify(newValue));
-		} catch (error) {
-			console.warn(`Error setting localStorage key "${key}":`, error);
-		}
-	};
-
-	return [value, setStoredValue];
-}
+const baseLanguages: { label: string; value: string }[] = SUPPORTED_LANGUAGES.map((code) => ({ label: LANGUAGE_LABELS[code], value: code }));
 
 export default function TopBar() {
-	const [theme, setTheme] = useLocalStorage("theme", "default");
-	const [dark, setDark] = useLocalStorage("darkMode", false);
+	const theme = useSettingsStore((s) => s.theme);
+	const setTheme = useSettingsStore((s) => s.setTheme);
+	const dark = useSettingsStore((s) => s.darkMode);
+	const setDark = useSettingsStore((s) => s.setDarkMode);
+	const language = useSettingsStore((s) => s.language);
+	const setLanguage = useSettingsStore((s) => s.setLanguage);
+
+	const { t } = useTranslation("common");
+
+	const [botsByLang, setBotsByLang] = useState<Record<string, boolean>>({});
+		const [botLangs, setBotLangs] = useState<string[]>([]);
+
+	useEffect(() => {
+		let cancelled = false;
+			fetch('/api/rasa/bots')
+			.then(r => r.ok ? r.json() : Promise.reject(r.status))
+				.then((data: { bots: { lang: string }[] }) => {
+				if (cancelled) return;
+				const map: Record<string, boolean> = {};
+					const langs: string[] = [];
+					for (const b of data.bots || []) { map[b.lang] = true; langs.push(b.lang); }
+				setBotsByLang(map);
+					setBotLangs(langs);
+			})
+			.catch(() => setBotsByLang({}));
+		return () => { cancelled = true };
+	}, []);
 
 	useEffect(() => {
 		if (theme && theme !== "default") {
@@ -51,15 +56,26 @@ export default function TopBar() {
 		} else {
 			document.documentElement.removeAttribute("data-theme");
 		}
+		if (typeof document !== 'undefined') {
+			document.cookie = `theme=${theme}; path=/; max-age=31536000; samesite=lax`;
+		}
 	}, [theme]);
 
 	useEffect(() => {
-		if (dark) {
-			document.documentElement.classList.add("dark");
-		} else {
-			document.documentElement.classList.remove("dark");
+		if (dark) document.documentElement.classList.add("dark");
+		else document.documentElement.classList.remove("dark");
+		if (typeof document !== 'undefined') {
+			document.cookie = `dark=${dark}; path=/; max-age=31536000; samesite=lax`;
 		}
 	}, [dark]);
+
+	useEffect(() => {
+		if (i18n.language !== language) i18n.changeLanguage(language);
+		if (typeof document !== 'undefined') {
+			document.documentElement.lang = language;
+			document.cookie = `lang=${language}; path=/; max-age=31536000; samesite=lax`;
+		}
+	}, [language]);
 
 	return (
 		<div
@@ -67,34 +83,62 @@ export default function TopBar() {
 			id="sym:TopBar"
 		>
 			<div className="flex items-center gap-2 h-10">
-				<Image src="/logo.png" alt="Logo" width={629} height={179} style={{ height: "200%", width: "auto" }} />
+				<Image src="/logo.png" alt={t('topbar.logoAlt')} width={629} height={179} style={{ height: "200%", width: "auto" }} />
 			</div>
 			<div className="flex items-center gap-4">
-				<Select value={theme} onValueChange={setTheme}>
-					<SelectTrigger>
-						<SelectValue placeholder="Theme" />
+				{/* Language selector */}
+				<Select value={language} onValueChange={(v) => setLanguage(v as any)}>
+					<SelectTrigger className="w-32" aria-label={t("topbar.language")}>
+						<SelectValue placeholder={t("topbar.language")} />
 					</SelectTrigger>
 					<SelectContent>
-						{themes.map((t) => (
-							<SelectItem key={t.value} value={t.value}>
-								{t.label}
+						{(() => {
+							const merged: { label: string; value: string }[] = [...baseLanguages];
+							for (const tag of botLangs) {
+								const exists = merged.some((x) => x.value === tag || x.value === tag.split('-')[0]);
+								if (!exists) merged.push({ label: tag.toUpperCase(), value: tag });
+							}
+							return merged.map((l) => {
+							const code = String(l.value).toUpperCase();
+							const uiAvailable = true;
+							const hasBot = !!botsByLang[l.value];
+
+							let suffix = '';
+							if (hasBot && uiAvailable) suffix = '';
+							else if (hasBot && !uiAvailable) suffix = ` (${t('topbar.flag.rasaShort')})`;
+							else if (!hasBot && uiAvailable) suffix = ` (${t('topbar.flag.uiShort')})`;
+
+							return (
+								<SelectItem key={l.value} value={l.value}>
+									<span className="inline-flex items-center justify-between w-full gap-2">
+										<span>{l.label}</span>
+										<span className="text-xs text-muted-foreground whitespace-nowrap">{code}{suffix}</span>
+									</span>
+								</SelectItem>
+							)
+							})
+						})()}
+					</SelectContent>
+				</Select>
+
+				<Select value={theme} onValueChange={(v) => setTheme(v as any)}>
+					<SelectTrigger className="w-32" aria-label={t("topbar.theme")}>
+						<SelectValue placeholder={t("topbar.theme")} />
+					</SelectTrigger>
+					<SelectContent>
+						{themes.map((topt) => (
+							<SelectItem key={topt.value} value={topt.value}>
+								{t(topt.key)}
 							</SelectItem>
 						))}
 					</SelectContent>
 				</Select>
-				<Button
-					className="border rounded"
-					onClick={() => setDark(!dark)}
-					aria-label="Toggle dark mode"
-				>
-					{dark ? "🌙 Dark" : "☀️ Light"}
+
+				<Button className="border rounded" onClick={() => setDark(!dark)} aria-label={t('topbar.toggleDarkMode')}>
+					{dark ? `🌙 ${t("topbar.dark")}` : `☀️ ${t("topbar.light")}`}
 				</Button>
-				<Button
-					className="border rounded"
-					onClick={() => signOut()}
-					aria-label="Logout"
-				>
-					Logout
+				<Button className="border rounded" onClick={() => signOut()} aria-label={t('topbar.logout')}>
+					{t("topbar.logout")}
 				</Button>
 			</div>
 		</div>

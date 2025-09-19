@@ -4,6 +4,8 @@ import * as React from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { ChevronRight, Loader2 } from "lucide-react"
+import { useTranslation } from "react-i18next"
+import "@/i18n"
 
 interface ChatInputProps {
   onSubmit: (message: string) => Promise<void> | void
@@ -14,13 +16,16 @@ interface ChatInputProps {
 
 export function ChatInput({
   onSubmit,
-  placeholder = "Ask anything...",
+  placeholder,
   disabled = false,
   className = "",
 }: ChatInputProps) {
   const [message, setMessage] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+  const { t } = useTranslation('common')
+
+  const computedPlaceholder = placeholder ?? t('chat.placeholder')
 
   const MAX_HEIGHT = 160
 
@@ -63,7 +68,8 @@ export function ChatInput({
     <div className={`flex items-end space-x-2 ${className}`}>
       <Textarea
         ref={textareaRef}
-        placeholder={placeholder}
+        placeholder={computedPlaceholder}
+        aria-label={computedPlaceholder}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
@@ -75,6 +81,8 @@ export function ChatInput({
         onClick={handleSubmit}
         disabled={isLoading || disabled || !message.trim()}
         size="icon"
+        aria-label={t('chat.send')}
+        title={t('chat.send')}
       >
         {isLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </Button>
