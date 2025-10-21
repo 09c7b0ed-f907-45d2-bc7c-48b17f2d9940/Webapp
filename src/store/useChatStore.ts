@@ -1,14 +1,11 @@
 import { create } from 'zustand';
-import type { PlotCollection } from '@/models/chartModels';
-
-// Use PlotCollection for visualization and history
-export type CustomGraphPayload = PlotCollection;
+import type { VisualizationResponseDTO } from '@/models/dto/response';
 
 interface ChatStore {
-  visualization: CustomGraphPayload | null;
-  setVisualization: (v: CustomGraphPayload | null) => void;
-  history: CustomGraphPayload[];
-  addToHistory: (v: CustomGraphPayload) => void;
+  visualization: VisualizationResponseDTO | null;
+  setVisualization: (v: VisualizationResponseDTO | null) => void;
+  history: VisualizationResponseDTO[];
+  addToHistory: (v: VisualizationResponseDTO) => void;
 
   selectedChartIndex: number | null;
   setSelectedChartIndex: (i: number) => void;

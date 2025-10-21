@@ -23,7 +23,12 @@
   "chat.error": "Sorry, something went wrong. Please try again.",
   "visualization.none": "No visualization selected.",
   "visualization.boxNotImplemented": "Box plot visualization not implemented.",
+  "visualization.notImplemented": "This chart type isn't implemented yet.",
   "visualization.type.line": "Line Plot",
+  "visualization.type.area": "Area Chart",
+  "visualization.type.bar": "Bar Chart",
+  "visualization.type.pie": "Pie Chart",
+  "visualization.type.radar": "Radar Chart",
   "visualization.type.box": "Box Plot",
   "carousel.previous": "Previous slide",
   "carousel.next": "Next slide"

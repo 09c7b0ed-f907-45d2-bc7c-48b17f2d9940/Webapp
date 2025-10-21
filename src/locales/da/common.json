@@ -23,7 +23,12 @@
   "chat.error": "Noget gik galt. Prøv igen.",
   "visualization.none": "Ingen visualisering valgt.",
   "visualization.boxNotImplemented": "Boksdiagram er ikke implementeret.",
+  "visualization.notImplemented": "Denne diagramtype er endnu ikke implementeret.",
   "visualization.type.line": "Linjediagram",
+  "visualization.type.area": "Arealdiagram",
+  "visualization.type.bar": "Søjlediagram",
+  "visualization.type.pie": "Cirkeldiagram",
+  "visualization.type.radar": "Radardiagram",
   "visualization.type.box": "Boksdiagram",
   "carousel.previous": "Forrige slide",
   "carousel.next": "Næste slide"

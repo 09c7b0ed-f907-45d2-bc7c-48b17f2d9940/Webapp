@@ -23,7 +23,12 @@
   "chat.error": "Κάτι πήγε στραβά. Δοκιμάστε ξανά.",
   "visualization.none": "Δεν έχει επιλεγεί απεικόνιση.",
   "visualization.boxNotImplemented": "Η απεικόνιση διαγράμματος κουτιού δεν έχει υλοποιηθεί.",
+  "visualization.notImplemented": "Αυτός ο τύπος διαγράμματος δεν έχει υλοποιηθεί ακόμη.",
   "visualization.type.line": "Διάγραμμα γραμμής",
+  "visualization.type.area": "Διάγραμμα περιοχής",
+  "visualization.type.bar": "Ραβδόγραμμα",
+  "visualization.type.pie": "Κυκλικό διάγραμμα",
+  "visualization.type.radar": "Διάγραμμα ραντάρ",
   "visualization.type.box": "Διάγραμμα κουτιού",
   "carousel.previous": "Προηγούμενη διαφάνεια",
   "carousel.next": "Επόμενη διαφάνεια"

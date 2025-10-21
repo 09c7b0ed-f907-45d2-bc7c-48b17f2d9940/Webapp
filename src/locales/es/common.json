@@ -23,7 +23,12 @@
   "chat.error": "Ha ocurrido un error. Inténtalo de nuevo.",
   "visualization.none": "No hay visualización seleccionada.",
   "visualization.boxNotImplemented": "La visualización de diagrama de caja no está implementada.",
+  "visualization.notImplemented": "Este tipo de gráfico aún no está implementado.",
   "visualization.type.line": "Gráfico de líneas",
+  "visualization.type.area": "Gráfico de área",
+  "visualization.type.bar": "Gráfico de barras",
+  "visualization.type.pie": "Gráfico circular",
+  "visualization.type.radar": "Gráfico de radar",
   "visualization.type.box": "Diagrama de caja",
   "carousel.previous": "Diapositiva anterior",
   "carousel.next": "Siguiente diapositiva"

@@ -10,7 +10,8 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import type { PlotCollection, LinePlot, BoxPlot } from "@/models/chartModels";
+import type { ChartDTO } from "@/models/dto/charts";
+import type { VisualizationResponseDTO } from "@/models/dto/response";
 import clsx from "clsx";
 import { useTranslation } from 'react-i18next';
 import '@/i18n';
@@ -36,7 +37,7 @@ export default function HistoryWindow() {
     }
   }, [selectedChartIndex, visualization, history]);
 
-  const handleClick = (viz: PlotCollection, chartIndex: number) => {
+  const handleClick = (viz: VisualizationResponseDTO, chartIndex: number) => {
     setVisualization(viz);
     setSelectedChartIndex(chartIndex);
   };
@@ -76,10 +77,7 @@ export default function HistoryWindow() {
       <Carousel className="flex-1 w-full h-full" opts={{ slidesToScroll: cardsPerView }}>
         <CarouselContent className="h-full">
           {history.map((viz, historyIndex) => {
-            const charts: ({ type: 'line', chart: LinePlot } | { type: 'box', chart: BoxPlot })[] = [
-              ...(viz.linePlots?.map((chart) => ({ type: 'line' as const, chart })) ?? []),
-              ...(viz.boxPlots?.map((chart) => ({ type: 'box' as const, chart })) ?? []),
-            ];
+            const charts = (viz.charts ?? []) as ChartDTO[];
             return charts.map((item, chartIndex) => {
               const refKey = `${historyIndex}-${chartIndex}`;
               const isSelected =
@@ -115,12 +113,15 @@ export default function HistoryWindow() {
                   >
                     <Card className="w-full h-full flex flex-col justify-center">
                       <CardContent className="p-4 text-sm flex flex-col justify-center h-full">
-                        <div className="font-semibold truncate">{item.chart.chartTitle}</div>
+                        <div className="font-semibold truncate">{(item as any).metadata?.title ?? ''}</div>
                         <div className="text-xs text-muted-foreground truncate">
-                          {"sourceMetricId" in item.chart ? item.chart.sourceMetricId : ""}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {item.type === "box" ? t('visualization.type.box') : t('visualization.type.line')}
+                          {item.type === "BOX" && t('visualization.type.box')}
+                          {item.type === "LINE" && t('visualization.type.line')}
+                          {item.type === "AREA" && t('visualization.type.area')}
+                          {item.type === "BAR" && t('visualization.type.bar')}
+                          {item.type === "PIE" && t('visualization.type.pie')}
+                          {item.type === "RADAR" && t('visualization.type.radar')}
+                          {item.type !== "BOX" && item.type !== "LINE" && item.type !== "AREA" && item.type !== "BAR" && item.type !== "PIE" && item.type !== "RADAR" && (<>{item.type}</>)}
                         </div>
                       </CardContent>
                     </Card>

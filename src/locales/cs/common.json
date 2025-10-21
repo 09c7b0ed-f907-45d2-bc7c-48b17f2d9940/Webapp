@@ -23,7 +23,12 @@
   "chat.error": "Došlo k chybě. Zkuste to prosím znovu.",
   "visualization.none": "Není vybrána žádná vizualizace.",
   "visualization.boxNotImplemented": "Vizualizace krabicového grafu není implementována.",
+  "visualization.notImplemented": "Tento typ grafu zatím není implementován.",
   "visualization.type.line": "Čárový graf",
+  "visualization.type.area": "Plošný graf",
+  "visualization.type.bar": "Sloupcový graf",
+  "visualization.type.pie": "Koláčový graf",
+  "visualization.type.radar": "Radarový graf",
   "visualization.type.box": "Krabicový graf",
   "carousel.previous": "Předchozí snímek",
   "carousel.next": "Další snímek"

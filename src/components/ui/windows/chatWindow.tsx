@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChatInput } from "@/components/ui/chat-input";
 import ChatMessageList from "@/components/ui/chat-message-list";
 import { useChatStore } from "@/store/useChatStore";
+import type { VisualizationResponseDTO } from "@/models/dto/response";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useTranslation } from "react-i18next";
 import "@/i18n";
@@ -53,10 +54,10 @@ export default function ChatWindow() {
 
       const { setVisualization, addToHistory, setSelectedChartIndex } = useChatStore.getState();
 
-      if (data.custom) {
-        const chartsData = data.custom?.charts ?? data.custom;
-        setVisualization(chartsData);
-        addToHistory(chartsData);
+      const viz: VisualizationResponseDTO | null = data.custom ?? null;
+      if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
+        setVisualization(viz);
+        addToHistory(viz);
         setSelectedChartIndex(0);
       }
     } catch (err) {

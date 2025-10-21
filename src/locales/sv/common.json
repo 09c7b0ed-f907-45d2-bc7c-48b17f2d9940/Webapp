@@ -23,7 +23,12 @@
   "chat.error": "Något gick fel. Försök igen.",
   "visualization.none": "Ingen visualisering vald.",
   "visualization.boxNotImplemented": "Lådagram-visualisering är inte implementerad.",
+  "visualization.notImplemented": "Denna diagramtyp är ännu inte implementerad.",
   "visualization.type.line": "Linjediagram",
+  "visualization.type.area": "Ytdiagram",
+  "visualization.type.bar": "Stapeldiagram",
+  "visualization.type.pie": "Cirkeldiagram",
+  "visualization.type.radar": "Radardiagram",
   "visualization.type.box": "Lådagram",
   "carousel.previous": "Föregående bild",
   "carousel.next": "Nästa bild"
