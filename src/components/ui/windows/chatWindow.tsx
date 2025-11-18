@@ -42,23 +42,71 @@ export default function ChatWindow() {
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      const data = await res.json();
-      if (data.reply !== "") {
-        const botMsg: Message = {
-          id: crypto.randomUUID(),
-          sender: "other",
-          content: data.reply,
-        };
-        setMessages((prev) => [...prev, botMsg]);
-      }
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/x-ndjson") || contentType.includes("application/json")) {
+        const reader = res.body?.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let hasAnyText = false;
+        let lastBotMsgId: string | null = null;
+        const { setVisualization, addToHistory, setSelectedChartIndex } = useChatStore.getState();
 
-      const { setVisualization, addToHistory, setSelectedChartIndex } = useChatStore.getState();
+        if (reader) {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split(/\r?\n/);
+            buf = lines.pop() || "";
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const obj = JSON.parse(line);
+                if (typeof obj.text === "string" && obj.text.length > 0) {
+                  hasAnyText = true;
+                  if (!lastBotMsgId) {
+                    lastBotMsgId = crypto.randomUUID();
+                    setMessages((prev) => [...prev, { id: lastBotMsgId!, sender: "other", content: obj.text }]);
+                  } else {
+                    const id = lastBotMsgId;
+                    setMessages((prev) => prev.map(m => m.id === id ? { ...m, content: m.content ? `${m.content}\n${obj.text}` : obj.text } : m));
+                  }
+                }
+                if (obj.custom) {
+                  const viz: VisualizationResponseDTO | null = obj.custom ?? null;
+                  if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
+                    setVisualization(viz);
+                    addToHistory(viz);
+                    setSelectedChartIndex(0);
+                  }
+                }
+              } catch (e) {
+                console.warn("NDJSON parse error:", e);
+              }
+            }
+          }
+        }
 
-      const viz: VisualizationResponseDTO | null = data.custom ?? null;
-      if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
-        setVisualization(viz);
-        addToHistory(viz);
-        setSelectedChartIndex(0);
+        if (!hasAnyText) {
+          // No-op; some actions might only emit custom payloads.
+        }
+      } else {
+        const data = await res.json();
+        if (data.reply !== "") {
+          const botMsg: Message = {
+            id: crypto.randomUUID(),
+            sender: "other",
+            content: data.reply,
+          };
+          setMessages((prev) => [...prev, botMsg]);
+        }
+        const { setVisualization, addToHistory, setSelectedChartIndex } = useChatStore.getState();
+        const viz: VisualizationResponseDTO | null = data.custom ?? null;
+        if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
+          setVisualization(viz);
+          addToHistory(viz);
+          setSelectedChartIndex(0);
+        }
       }
     } catch (err) {
       console.error("/api/rasa error:", err);

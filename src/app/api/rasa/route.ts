@@ -2,6 +2,10 @@ import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { getRasaUrlForRequest } from "@/lib/rasaConfig";
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const maxDuration = 600;
+
 export async function POST(req: NextRequest) {
   const token = await getToken({ req });
 
@@ -16,27 +20,25 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Rasa not configured", { status: 500 });
   }
 
-  const rasaRes = await fetch(`${apiUrl}/webhooks/rest/webhook`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      sender: token.accessToken,
-      message,
-    }),
-  });
-
-  interface RasaMessage {
-    text?: string;
-    custom?: unknown;
-    [key: string]: unknown;
+  const controller = new AbortController();
+  const clientSignal: AbortSignal | undefined = (req as unknown as { signal?: AbortSignal }).signal;
+  if (clientSignal) {
+    const onAbort = () => controller.abort();
+    clientSignal.addEventListener("abort", onAbort, { once: true });
   }
 
-  const rasaData: RasaMessage[] = await rasaRes.json();
+  const rasaStreamRes = await fetch(`${apiUrl}/webhooks/rest/webhook?stream=true`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sender: token.accessToken, message }),
+    signal: controller.signal,
+  });
 
-  const reply = rasaData.map((m: RasaMessage) => m.text).filter(Boolean).join("\n");
-  const custom = rasaData.find((m: RasaMessage) => m.custom)?.custom ?? null;
-
-  return NextResponse.json({ reply, custom });
+  return new Response(rasaStreamRes.body, {
+    status: rasaStreamRes.status,
+    headers: {
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
 }
