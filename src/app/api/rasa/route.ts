@@ -15,6 +15,15 @@ export async function POST(req: NextRequest) {
 
   const { message } = await req.json();
 
+  const baseCallback = process.env.CALLBACK_BASE_URL;
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+  const callbackUrl = baseCallback
+    ? `${baseCallback.replace(/\/$/, "")}/api/rasa/long-task-callback`
+    : host
+      ? `${proto}://${host}/api/rasa/long-task-callback`
+      : null;
+
   const apiUrl = getRasaUrlForRequest(req.headers, new Map(req.cookies.getAll().map(c => [c.name, c.value])));
   if (!apiUrl) {
     return new NextResponse("Rasa not configured", { status: 500 });
@@ -30,7 +39,17 @@ export async function POST(req: NextRequest) {
   const rasaStreamRes = await fetch(`${apiUrl}/webhooks/rest/webhook?stream=true`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sender: token.accessToken, message }),
+    body: JSON.stringify({
+      sender: token.accessToken,
+      message,
+      ...(callbackUrl
+        ? {
+            metadata: {
+              callback_url: callbackUrl,
+            },
+          }
+        : {}),
+    }),
     signal: controller.signal,
   });
 

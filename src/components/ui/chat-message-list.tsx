@@ -8,6 +8,7 @@ type Message = {
   id: string;
   sender: "user" | "other";
   content: string;
+  kind?: "normal" | "progress";
 };
 
 type Props = {
@@ -30,6 +31,7 @@ export default function ChatMessageList({ messages }: Props) {
               key={msg.id}
               message={msg.content}
               sender={msg.sender === "user" ? "me" : "other"}
+              isProgress={msg.kind === "progress"}
             />
           ))}
           <div ref={endRef} />

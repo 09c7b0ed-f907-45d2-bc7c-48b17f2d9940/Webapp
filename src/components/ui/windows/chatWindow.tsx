@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChatInput } from "@/components/ui/chat-input";
 import ChatMessageList from "@/components/ui/chat-message-list";
 import { useChatStore } from "@/store/useChatStore";
@@ -13,12 +13,85 @@ type Message = {
   id: string;
   sender: "user" | "other";
   content: string;
+  kind?: "normal" | "progress";
 };
 
 export default function ChatWindow() {
   const [messages, setMessages] = useState<Message[]>([]);
   const language = useSettingsStore((s) => s.language);
   const { t } = useTranslation('common');
+
+  const applyVisualizationFromCustom = (custom: unknown) => {
+    const viz = (custom ?? null) as VisualizationResponseDTO | null;
+    if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
+      const { setVisualization, addToHistory, setSelectedChartIndex } = useChatStore.getState();
+      setVisualization(viz);
+      addToHistory(viz);
+      setSelectedChartIndex(0);
+    }
+  };
+
+  useEffect(() => {
+    const es = new EventSource("/api/rasa/stream", { withCredentials: true });
+
+    es.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data ?? "null");
+        if (!data || typeof data !== "object") return;
+
+        if (data.type === "long-task-result") {
+          const custom = (data as any).custom;
+          const progressText =
+            custom && typeof custom === "object" && typeof (custom as any).progress === "string"
+              ? (custom as any).progress
+              : null;
+
+          if (progressText) {
+            // Show or update a single temporary progress bubble.
+            setMessages((prev) => {
+              const base = prev.filter((m) => m.kind !== "progress");
+              return [
+                ...base,
+                {
+                  id: crypto.randomUUID(),
+                  sender: "other",
+                  content: progressText,
+                  kind: "progress",
+                },
+              ];
+            });
+            return;
+          }
+
+          // Any non-progress callback should clear existing progress bubbles.
+          setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
+
+          if (typeof data.text === "string" && data.text.length > 0) {
+            const botMsg: Message = {
+              id: crypto.randomUUID(),
+              sender: "other",
+              content: data.text,
+            };
+            setMessages((prev) => [...prev, botMsg]);
+          }
+          if (custom) {
+            applyVisualizationFromCustom(custom);
+          }
+        }
+      } catch (err) {
+        console.error("SSE message parse error:", err);
+      }
+    };
+
+    es.onerror = (err) => {
+      // Let EventSource handle automatic reconnection; just log the error.
+      console.error("SSE connection error:", err);
+    };
+
+    return () => {
+      es.close();
+    };
+  }, []);
 
   const sendMessage = async (msg: string) => {
     const userMsg: Message = {
@@ -49,7 +122,6 @@ export default function ChatWindow() {
         let buf = "";
         let hasAnyText = false;
         let lastBotMsgId: string | null = null;
-        const { setVisualization, addToHistory, setSelectedChartIndex } = useChatStore.getState();
 
         if (reader) {
           while (true) {
@@ -73,12 +145,7 @@ export default function ChatWindow() {
                   }
                 }
                 if (obj.custom) {
-                  const viz: VisualizationResponseDTO | null = obj.custom ?? null;
-                  if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
-                    setVisualization(viz);
-                    addToHistory(viz);
-                    setSelectedChartIndex(0);
-                  }
+                  applyVisualizationFromCustom(obj.custom);
                 }
               } catch (e) {
                 console.warn("NDJSON parse error:", e);
@@ -100,13 +167,7 @@ export default function ChatWindow() {
           };
           setMessages((prev) => [...prev, botMsg]);
         }
-        const { setVisualization, addToHistory, setSelectedChartIndex } = useChatStore.getState();
-        const viz: VisualizationResponseDTO | null = data.custom ?? null;
-        if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
-          setVisualization(viz);
-          addToHistory(viz);
-          setSelectedChartIndex(0);
-        }
+        applyVisualizationFromCustom(data.custom);
       }
     } catch (err) {
       console.error("/api/rasa error:", err);

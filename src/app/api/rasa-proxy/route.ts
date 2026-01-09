@@ -1,6 +1,8 @@
 import { jwtVerify, createRemoteJWKSet } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 
+const FETCH_TIMEOUT_MS = Number(process.env.RASA_PROXY_TIMEOUT_MS ?? 60000);
+
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
   const rawToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
@@ -30,17 +32,36 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Invalid proxy request", { status: 400 });
   }
 
-  const res = await fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${rawToken}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      query: gqlPayload.query,
-      variables: gqlPayload.variables ?? {},
-    }),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${rawToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        query: gqlPayload.query,
+        variables: gqlPayload.variables ?? {},
+      }),
+      signal: controller.signal,
+    });
+  } catch (err: any) {
+    clearTimeout(timeoutId);
+
+    if (err?.name === "AbortError") {
+      console.error("GraphQL fetch timed out after", FETCH_TIMEOUT_MS, "ms");
+      return new NextResponse("Upstream timeout", { status: 504 });
+    }
+
+    console.error("GraphQL fetch failed:", err);
+    return new NextResponse("Upstream request failed", { status: 502 });
+  }
+
+  clearTimeout(timeoutId);
 
   const data = await res.json();
 

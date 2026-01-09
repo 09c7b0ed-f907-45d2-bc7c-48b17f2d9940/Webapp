@@ -4,12 +4,14 @@ interface ChatBubbleProps {
   message: string;
   sender: "me" | "other";
   isTyping?: boolean;
+  isProgress?: boolean;
 }
 
 export default function ChatBubble({
   message,
   sender,
   isTyping = false,
+  isProgress = false,
 }: ChatBubbleProps) {
   const isMe = sender === "me";
 
@@ -20,7 +22,9 @@ export default function ChatBubble({
           "w-fit max-w-[90%] px-4 py-2 shadow-md",
           isMe
             ? "bg-primary text-primary-foreground rounded-2xl rounded-br-none"
-            : "bg-muted rounded-2xl rounded-bl-none"
+            : isProgress
+              ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-50 rounded-2xl rounded-bl-none"
+              : "bg-muted rounded-2xl rounded-bl-none"
         )}
       >
         {isTyping ? (
