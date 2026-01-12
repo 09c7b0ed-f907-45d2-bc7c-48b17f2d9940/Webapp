@@ -31,6 +31,34 @@ export default function ChatWindow() {
     }
   };
 
+  const handleCustomPayload = (custom: unknown) => {
+    const obj = custom as any;
+    const progressText =
+      obj && typeof obj === "object" && typeof obj.progress === "string"
+        ? (obj.progress as string)
+        : null;
+
+    if (progressText) {
+      // Show or update a single temporary progress bubble.
+      setMessages((prev) => {
+        const base = prev.filter((m) => m.kind !== "progress");
+        return [
+          ...base,
+          {
+            id: crypto.randomUUID(),
+            sender: "other",
+            content: progressText,
+            kind: "progress",
+          },
+        ];
+      });
+      return;
+    }
+
+    setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
+    applyVisualizationFromCustom(custom);
+  };
+
   useEffect(() => {
     const es = new EventSource("/api/rasa/stream", { withCredentials: true });
 
@@ -40,32 +68,6 @@ export default function ChatWindow() {
         if (!data || typeof data !== "object") return;
 
         if (data.type === "long-task-result") {
-          const custom = (data as any).custom;
-          const progressText =
-            custom && typeof custom === "object" && typeof (custom as any).progress === "string"
-              ? (custom as any).progress
-              : null;
-
-          if (progressText) {
-            // Show or update a single temporary progress bubble.
-            setMessages((prev) => {
-              const base = prev.filter((m) => m.kind !== "progress");
-              return [
-                ...base,
-                {
-                  id: crypto.randomUUID(),
-                  sender: "other",
-                  content: progressText,
-                  kind: "progress",
-                },
-              ];
-            });
-            return;
-          }
-
-          // Any non-progress callback should clear existing progress bubbles.
-          setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
-
           if (typeof data.text === "string" && data.text.length > 0) {
             const botMsg: Message = {
               id: crypto.randomUUID(),
@@ -74,8 +76,9 @@ export default function ChatWindow() {
             };
             setMessages((prev) => [...prev, botMsg]);
           }
+          const custom = (data as any).custom;
           if (custom) {
-            applyVisualizationFromCustom(custom);
+            handleCustomPayload(custom);
           }
         }
       } catch (err) {
@@ -84,7 +87,6 @@ export default function ChatWindow() {
     };
 
     es.onerror = (err) => {
-      // Let EventSource handle automatic reconnection; just log the error.
       console.error("SSE connection error:", err);
     };
 
@@ -145,7 +147,7 @@ export default function ChatWindow() {
                   }
                 }
                 if (obj.custom) {
-                  applyVisualizationFromCustom(obj.custom);
+                  handleCustomPayload(obj.custom);
                 }
               } catch (e) {
                 console.warn("NDJSON parse error:", e);
