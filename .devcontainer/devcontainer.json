@@ -2,5 +2,6 @@
 	"name": "Webshop",
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "webshop",
-	"workspaceFolder": "/workspace"
+	"workspaceFolder": "/workspace",
+	"postCreateCommand": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile"
 }
