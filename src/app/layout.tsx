@@ -1,9 +1,12 @@
-import '@/app/globals.css'; 
+import '@/app/globals.css';
 import React from "react";
+import { Poppins } from 'next/font/google';
 import SessionRoot from "@/components/SessionRoot";
 import TopBar from "@/components/ui/TopBar";
 import { cookies } from 'next/headers';
 import { resources } from '@/locales/config';
+
+const poppins = Poppins({ subsets: ['latin'], weight: ['300','400','500','600','700'], display: 'swap' });
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
@@ -18,7 +21,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const htmlClass = dark ? 'dark' : undefined;
 
   return (
-    <html {...htmlAttrs} className={htmlClass}>
+    <html {...htmlAttrs} className={[htmlClass, poppins.className].filter(Boolean).join(' ')}>
       <head>
         <title>{titleText}</title>
         <meta charSet="UTF-8" />

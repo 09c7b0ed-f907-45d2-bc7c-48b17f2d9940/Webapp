@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react"
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -10,13 +11,13 @@ import i18n from "../../i18n";
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/locales/config";
 
 const themes = [
-	{ key: "topbar.theme.default", value: "default" },
+	// { key: "topbar.theme.default", value: "default" },
 	{ key: "topbar.theme.resq", value: "resq" },
-	{ key: "topbar.theme.green", value: "green" },
-	{ key: "topbar.theme.red", value: "red" },
-	{ key: "topbar.theme.magenta", value: "magenta" },
-	{ key: "topbar.theme.blue", value: "blue" },
-	{ key: "topbar.theme.yellow", value: "yellow" },
+	// { key: "topbar.theme.green", value: "green" },
+	// { key: "topbar.theme.red", value: "red" },
+	// { key: "topbar.theme.magenta", value: "magenta" },
+	// { key: "topbar.theme.blue", value: "blue" },
+	// { key: "topbar.theme.yellow", value: "yellow" },
 ] as const;
 
 const baseLanguages: { label: string; value: string }[] = SUPPORTED_LANGUAGES.map((code) => ({ label: LANGUAGE_LABELS[code], value: code }));
@@ -121,7 +122,7 @@ export default function TopBar() {
 					</SelectContent>
 				</Select>
 
-				<Select value={theme} onValueChange={(v) => setTheme(v as any)}>
+				{/* <Select value={theme} onValueChange={(v) => setTheme(v as any)}>
 					<SelectTrigger className="w-32" aria-label={t("topbar.theme")}>
 						<SelectValue placeholder={t("topbar.theme")} />
 					</SelectTrigger>
@@ -132,10 +133,10 @@ export default function TopBar() {
 							</SelectItem>
 						))}
 					</SelectContent>
-				</Select>
+				</Select> */}
 
 				<Button className="border rounded" onClick={() => setDark(!dark)} aria-label={t('topbar.toggleDarkMode')}>
-					{dark ? `🌙 ${t("topbar.dark")}` : `☀️ ${t("topbar.light")}`}
+					{dark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
 				</Button>
 				<Button className="border rounded" onClick={() => signOut()} aria-label={t('topbar.logout')}>
 					{t("topbar.logout")}

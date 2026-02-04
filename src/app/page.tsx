@@ -6,9 +6,9 @@ import VisualizationWindow from "@/components/ui/windows/visualizationWindow";
 
 export default function HomePage() {
   return (
-    <div className="h-full w-full">
+    <div className="h-full w-full px-4 py-4">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
-        <ResizablePanel defaultSize={30}>
+        <ResizablePanel defaultSize={30} minSize={10}>
           <div className="flex h-full items-center justify-center pr-1 p-2">
             <Card className="h-full w-full">
                 <CardContent className="h-full w-full">
@@ -32,8 +32,8 @@ export default function HomePage() {
             <ResizableHandle className="min-h-1 bg-transparent" />
             <ResizablePanel defaultSize={25}>
               <div className="flex h-full items-center justify-center pl-1 pt-1 p-2">
-                <Card className="h-full w-full">
-                    <CardContent className="h-full w-full">
+                <Card className="h-full w-full ">
+                    <CardContent className="h-full w-full px-12">
                         <HistoryWindow />
                     </CardContent>
                 </Card>

@@ -24,18 +24,64 @@ export default function HistoryWindow() {
   const visualization = useChatStore((s) => s.visualization);
   const { t } = useTranslation('common');
 
+  // Debug fallback data for visual testing when `history` is empty
+  const debugHistory: VisualizationResponseDTO[] = [
+    {
+      charts: [
+        { metadata: { title: 'Sample Bar Chart' }, type: 'BAR' } as any,
+      ],
+    } as any,
+    {
+      charts: [
+        { metadata: { title: 'Sample Line Chart' }, type: 'LINE' } as any,
+      ],
+    } as any,
+    {
+      charts: [
+        { metadata: { title: 'Sample Pie Chart' }, type: 'PIE' } as any,
+      ],
+    } as any,
+    {
+      charts: [
+        { metadata: { title: 'Sample Box Chart' }, type: 'BOX' } as any,
+      ],
+    } as any,
+    {
+      charts: [
+        { metadata: { title: 'Sample Bar Chart' }, type: 'BAR' } as any,
+      ],
+    } as any,
+    {
+      charts: [
+        { metadata: { title: 'Sample Line Chart' }, type: 'LINE' } as any,
+      ],
+    } as any,
+    {
+      charts: [
+        { metadata: { title: 'Sample Pie Chart' }, type: 'PIE' } as any,
+      ],
+    } as any,
+    {
+      charts: [
+        { metadata: { title: 'Sample Box Chart' }, type: 'BOX' } as any,
+      ],
+    } as any,
+  ];
+
+  const displayHistory = (history && history.length > 0) ? history : debugHistory;
+
   const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     if (selectedChartIndex !== null && visualization) {
-      const historyIndex = history.findIndex((h) => h === visualization);
+      const historyIndex = displayHistory.findIndex((h) => h === visualization);
       const refKey = `${historyIndex}-${selectedChartIndex}`;
       const ref = chartRefs.current.find((el) => el?.dataset.refkey === refKey);
       if (ref) {
         ref.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
       }
     }
-  }, [selectedChartIndex, visualization, history]);
+  }, [selectedChartIndex, visualization, displayHistory]);
 
   const handleClick = (viz: VisualizationResponseDTO, chartIndex: number) => {
     setVisualization(viz);
@@ -76,7 +122,7 @@ export default function HistoryWindow() {
     <div ref={containerRef} className="w-full h-full flex flex-col justify-center">
       <Carousel className="flex-1 w-full h-full" opts={{ slidesToScroll: cardsPerView }}>
         <CarouselContent className="h-full">
-          {history.map((viz, historyIndex) => {
+          {displayHistory.map((viz, historyIndex) => {
             const charts = (viz.charts ?? []) as ChartDTO[];
             return charts.map((item, chartIndex) => {
               const refKey = `${historyIndex}-${chartIndex}`;

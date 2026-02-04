@@ -21,10 +21,10 @@ export default function ChatBubble({
         className={cn(
           "w-fit max-w-[90%] px-4 py-2 shadow-md",
           isMe
-            ? "bg-primary text-primary-foreground rounded-2xl rounded-br-none"
+            ? "bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-3xl rounded-br-none"
             : isProgress
               ? "bg-blue-100 text-blue-900 dark:bg-blue-900 dark:text-blue-50 rounded-2xl rounded-bl-none"
-              : "bg-muted rounded-2xl rounded-bl-none"
+              : "bg-muted rounded-3xl rounded-bl-none"
         )}
       >
         {isTyping ? (

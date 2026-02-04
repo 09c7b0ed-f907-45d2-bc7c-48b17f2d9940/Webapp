@@ -44,7 +44,7 @@
 }
 
 :root {
-  --radius: 0.625rem;
+  --radius: 1rem;
   --background: #fbfbfb;
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -113,10 +113,11 @@
 }
 
 [data-theme="resq"] {
-  --background: #fbfbfb;
+  --background: #F7FAFC;
   --foreground: #0369a1;
-  --primary: #1b5682;
-  --secondary: #92bee5;
+  --primary: #2C79DD;
+  --secondary: #81B3F3;
+  --accent: #4C98FA;
 }
 
 [data-theme="resq"].dark {
@@ -126,7 +127,7 @@
   --secondary: #1b5682;
 }
 
-[data-theme="green"] {
+/* [data-theme="green"] {
   --background: #fbfbfb;
   --foreground: #166534;
   --primary: #22c55e;
@@ -193,8 +194,8 @@
   --background: #0a0a0a;
   --foreground: #fbfbfb;
   --primary: #4c4ade;
-  --secondary: #2d22c5;
-}
+  --secondary: #2d22c5; 
+}*/
 
 @layer base {
   * {
@@ -202,5 +203,6 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: Poppins, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   }
 }
