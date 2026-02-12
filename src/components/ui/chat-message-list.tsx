@@ -23,7 +23,7 @@ export default function ChatMessageList({ messages }: Props) {
   }, [messages]);
 
   return (
-    <div className="relative flex-1 h-0">
+    <div className="relative flex-1  h-0">
       <ScrollArea className="h-full w-full">
         <div className="flex flex-col gap-2 p-2">
           {messages.map((msg) => (

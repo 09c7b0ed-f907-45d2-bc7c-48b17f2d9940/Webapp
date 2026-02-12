@@ -19,8 +19,15 @@ export default function VisualizationWindow() {
   const selectedIndex = useChatStore((s) => s.selectedChartIndex);
   const { t } = useTranslation('common');
 
+
   if (!visualization || selectedIndex === null || !visualization.charts?.length) {
-    return <div className="text-center text-muted-foreground p-4">{t('visualization.none')}</div>;
+    
+    return(
+      <div>
+        <div className=" font-semibold text-primary" >{t('visualizationWindow.title')}</div>
+        <div className="text-center text-muted-foreground p-4">{t('visualization.none')}</div>
+      </div>
+    );
   }
 
   const charts = visualization.charts as ChartDTO[];

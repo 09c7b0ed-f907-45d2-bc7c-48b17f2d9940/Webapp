@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react"
+import { LogOutIcon, Moon, Sun } from "lucide-react"
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ export default function TopBar() {
 	}, []);
 
 	useEffect(() => {
-		if (theme && theme !== "default") {
+		if (theme && theme !== "default") { 
 			document.documentElement.setAttribute("data-theme", theme);
 		} else {
 			document.documentElement.removeAttribute("data-theme");
@@ -80,16 +80,17 @@ export default function TopBar() {
 
 	return (
 		<div
-			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0"
+			//className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0"
+			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0 flex-shrink-0" // added flex-shrink-0
 			id="sym:TopBar"
 		>
 			<div className="flex items-center gap-2 h-10">
 				<Image src="/logo.png" alt={t('topbar.logoAlt')} width={629} height={179} style={{ height: "200%", width: "auto" }} />
 			</div>
-			<div className="flex items-center gap-4">
+			<div className="flex items-center gap-4 ">
 				{/* Language selector */}
 				<Select value={language} onValueChange={(v) => setLanguage(v as any)}>
-					<SelectTrigger className="w-32" aria-label={t("topbar.language")}>
+					<SelectTrigger className="w-32 shadow-none hover:bg-black/5" aria-label={t("topbar.language")}>
 						<SelectValue placeholder={t("topbar.language")} />
 					</SelectTrigger>
 					<SelectContent>
@@ -110,8 +111,8 @@ export default function TopBar() {
 							else if (!hasBot && uiAvailable) suffix = ` (${t('topbar.flag.uiShort')})`;
 
 							return (
-								<SelectItem key={l.value} value={l.value}>
-									<span className="inline-flex items-center justify-between w-full gap-2">
+								<SelectItem key={l.value} value={l.value} className="">
+									<span className="inline-flex items-center justify-between w-full gap-2 data-[highlighted]:text-white">
 										<span>{l.label}</span>
 										<span className="text-xs text-muted-foreground whitespace-nowrap">{code}{suffix}</span>
 									</span>
@@ -121,7 +122,7 @@ export default function TopBar() {
 						})()}
 					</SelectContent>
 				</Select>
-
+				{/* Theme selector */}
 				{/* <Select value={theme} onValueChange={(v) => setTheme(v as any)}>
 					<SelectTrigger className="w-32" aria-label={t("topbar.theme")}>
 						<SelectValue placeholder={t("topbar.theme")} />
@@ -134,12 +135,13 @@ export default function TopBar() {
 						))}
 					</SelectContent>
 				</Select> */}
-
-				<Button className="border rounded" onClick={() => setDark(!dark)} aria-label={t('topbar.toggleDarkMode')}>
+				
+				<Button variant="ghost" className="border rounded hover:bg-black/75 hover:text-white transition-colors" onClick={() => setDark(!dark)} aria-label={t('topbar.toggleDarkMode')}>
 					{dark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
 				</Button>
-				<Button className="border rounded" onClick={() => signOut()} aria-label={t('topbar.logout')}>
-					{t("topbar.logout")}
+				<Button variant="ghost" className="border rounded hover:bg-destructive hover:text-white transition-colors" onClick={() => signOut()} aria-label={t('topbar.logout')}>
+					<LogOutIcon className="w-4 h-4" />
+					{t( "topbar.logout")}
 				</Button>
 			</div>
 		</div>

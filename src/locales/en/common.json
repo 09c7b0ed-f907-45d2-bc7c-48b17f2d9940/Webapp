@@ -1,5 +1,6 @@
 {
   "app.title": "Clinician Virtual Assistant",
+  "historyWindow.title": "Charts History",
   "topbar.logout": "Logout",
   "topbar.theme": "Theme",
   "topbar.dark": "Dark",
@@ -24,6 +25,7 @@
   "visualization.none": "No visualization selected.",
   "visualization.boxNotImplemented": "Box plot visualization not implemented.",
   "visualization.notImplemented": "This chart type isn't implemented yet.",
+  "visualizationWindow.title": "Data Visualization",
   "visualization.type.line": "Line Plot",
   "visualization.type.area": "Area Chart",
   "visualization.type.bar": "Bar Chart",

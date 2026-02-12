@@ -8,6 +8,7 @@ import type { VisualizationResponseDTO } from "@/models/dto/response";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useTranslation } from "react-i18next";
 import "@/i18n";
+import { WaveAsset } from "../Assets/wave-asset";
 
 type Message = {
   id: string;
@@ -183,8 +184,10 @@ export default function ChatWindow() {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      <ChatMessageList messages={messages} />
+    <div className=" flex flex-col h-full pt-2 pb-5">
+
+      <ChatMessageList  messages={messages} />
+      {/* <div className="h-6 bg-gradient-to-b from-transparent to-black/5 pointer-events-none p-0"></div> */}
       <ChatInput onSubmit={sendMessage} disabled={false} />
     </div>
   );

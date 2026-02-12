@@ -18,7 +18,7 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       language: 'en',
-      theme: 'default',
+      theme: 'resq',
       darkMode: false,
       setLanguage: (language) => set({ language }),
       setTheme: (theme) => set({ theme }),

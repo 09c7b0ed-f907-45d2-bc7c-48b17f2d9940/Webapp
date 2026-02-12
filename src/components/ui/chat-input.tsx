@@ -7,6 +7,7 @@ import { ChevronRight, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import "@/i18n"
 import { SendIcon } from "./Icons/send-icon"
+import { cn } from "@/lib/utils"
 
 interface ChatInputProps {
   onSubmit: (message: string) => Promise<void> | void
@@ -66,7 +67,8 @@ export function ChatInput({
   }
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`flex min-h-10 items-end gap-2 ${className}`}>
+
       <Textarea
         ref={textareaRef}
         placeholder={computedPlaceholder}
@@ -76,7 +78,7 @@ export function ChatInput({
         onKeyDown={handleKeyDown}
         disabled={disabled || isLoading}
         rows={1}
-        className=" min-h-9 resize-none transition-all duration-100 ease-in-out"
+        className="flex-1 min-h-10 resize-none transition-all duration-100 ease-in-out order-1 "
       />
       <Button
         onClick={handleSubmit}
@@ -84,9 +86,9 @@ export function ChatInput({
         size="icon"
         aria-label={t('chat.send')}
         title={t('chat.send')}
-        className="absolute right-1 bottom-0 -translate-y-1/2 translate-x-4 rounded-full"
+        className="rounded-full flex-shrink-0"
       >
-        {isLoading ? <Loader2 className="animate-spin h-4 w-4" /> : <SendIcon width={50} height={50} className="fill-background" />}
+        {isLoading ? <Loader2 className="animate-spin size-6" /> : <SendIcon className="fill-background size-6" />}
       </Button>
     </div>
   )

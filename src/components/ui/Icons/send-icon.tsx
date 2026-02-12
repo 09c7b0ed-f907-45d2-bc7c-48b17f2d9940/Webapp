@@ -1,18 +1,14 @@
 //https://fonts.google.com/icons?icon.query=send&selected=Material+Symbols+Outlined:send:FILL@0;wght@400;GRAD@0;opsz@24&icon.size=24&icon.color=%231f1f1f
 const SendIcon = ({
-    width,
-    height,
+
     className,
 }: {
-    width: number;
-    height: number;
+
     className?: string;
 }) => {
     return (
         <svg
             className={className}
-            width={`${width}`}
-            height={`${height}`}
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
