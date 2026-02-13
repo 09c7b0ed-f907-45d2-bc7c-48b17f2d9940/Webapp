@@ -23,9 +23,9 @@ export default function ChatMessageList({ messages }: Props) {
   }, [messages]);
 
   return (
-    <div className="relative flex-1  h-0">
-      <ScrollArea className="h-full w-full">
-        <div className="flex flex-col gap-2 p-2">
+    <div className="relative flex-1  h-0 min-w-0">
+      <ScrollArea className="h-full w-full ">
+        <div className="flex flex-col gap-2 p-2 pt-10">
           {messages.map((msg) => (
             <ChatBubble
               key={msg.id}

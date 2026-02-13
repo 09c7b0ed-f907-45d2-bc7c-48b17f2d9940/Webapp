@@ -24,7 +24,7 @@ export default function VisualizationWindow() {
     
     return(
       <div>
-        <div className=" font-semibold text-primary" >{t('visualizationWindow.title')}</div>
+        <div className=" font-semibold text-primary" >{t('visualization.title')}</div>
         <div className="text-center text-muted-foreground p-4">{t('visualization.none')}</div>
       </div>
     );

@@ -90,7 +90,7 @@ export default function TopBar() {
 			<div className="flex items-center gap-4 ">
 				{/* Language selector */}
 				<Select value={language} onValueChange={(v) => setLanguage(v as any)}>
-					<SelectTrigger className="w-32 shadow-none hover:bg-black/5" aria-label={t("topbar.language")}>
+					<SelectTrigger className="w-fit shadow-none hover:bg-black/5" aria-label={t("topbar.language")}>
 						<SelectValue placeholder={t("topbar.language")} />
 					</SelectTrigger>
 					<SelectContent>

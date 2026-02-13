@@ -1,5 +1,7 @@
 {
   "app.title": "Klinický virtuální asistent",
+  "history.title": "Historie grafů",
+  "robot.intro": "Chatovat se mnou",
   "topbar.logout": "Odhlásit se",
   "topbar.theme": "Téma",
   "topbar.dark": "Tmavé",
@@ -24,6 +26,7 @@
   "visualization.none": "Není vybrána žádná vizualizace.",
   "visualization.boxNotImplemented": "Vizualizace krabicového grafu není implementována.",
   "visualization.notImplemented": "Tento typ grafu zatím není implementován.",
+  "visualization.title": "Vizualizace dat",
   "visualization.type.line": "Čárový graf",
   "visualization.type.area": "Plošný graf",
   "visualization.type.bar": "Sloupcový graf",

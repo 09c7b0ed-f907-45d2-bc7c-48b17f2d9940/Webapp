@@ -16,10 +16,10 @@ export default function ChatBubble({
   const isMe = sender === "me";
 
   return (
-    <div className={cn("flex gap-2 items-end px-1", isMe ? "justify-end" : "justify-start")}>      
+    <div className={cn("flex gap-2 items-end px-1 w-auto", isMe ? "justify-end" : "justify-start")}>      
       <div
         className={cn(
-          "w-fit max-w-[90%] px-4 py-2 shadow-md",
+          "w-fit max-w-[90%] px-4 py-2 shadow-md overflow-x-hidden",
           isMe
             ? "bg-gradient-to-r from-primary to-accent text-primary-foreground rounded-3xl rounded-br-none"
             : isProgress
@@ -34,7 +34,7 @@ export default function ChatBubble({
             <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
           </div>
         ) : (
-          <p className="text-sm whitespace-pre-wrap">{message}</p>
+          <p className="max-w-fit text-sm whitespace-pre-wrap break-words hyphens-auto" style={{ overflowWrap: "anywhere" }}>{message}</p>
         )}
       </div>
     </div>

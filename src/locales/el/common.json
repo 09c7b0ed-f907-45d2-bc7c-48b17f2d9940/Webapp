@@ -1,5 +1,7 @@
 {
   "app.title": "Εικονικός Βοηθός Κλινικού",
+  "history.title": "Ιστορικό Διαγραμμάτων",
+  "robot.intro": "Συνομιλήστε μαζί μου",
   "topbar.logout": "Αποσύνδεση",
   "topbar.theme": "Θέμα",
   "topbar.dark": "Σκούρο",
@@ -24,6 +26,7 @@
   "visualization.none": "Δεν έχει επιλεγεί απεικόνιση.",
   "visualization.boxNotImplemented": "Η απεικόνιση διαγράμματος κουτιού δεν έχει υλοποιηθεί.",
   "visualization.notImplemented": "Αυτός ο τύπος διαγράμματος δεν έχει υλοποιηθεί ακόμη.",
+  "visualization.title": "Απεικόνιση δεδομένων",
   "visualization.type.line": "Διάγραμμα γραμμής",
   "visualization.type.area": "Διάγραμμα περιοχής",
   "visualization.type.bar": "Ραβδόγραμμα",

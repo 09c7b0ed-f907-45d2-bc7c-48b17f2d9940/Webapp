@@ -7,9 +7,10 @@ const WaveAsset = ({
 }) => {
     return (
         <svg
-            className={cn(className, "block rotate-180 -mt-px mr-px w-[101%]")}
+            className={cn(className, "block rotate-180 -mt-px mr-px w-[101%] h-auto")}
             
             viewBox="0 0 1440 180"
+            preserveAspectRatio="none"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
         >

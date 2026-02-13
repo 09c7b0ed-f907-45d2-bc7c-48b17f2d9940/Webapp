@@ -1,5 +1,7 @@
 {
   "app.title": "Klinisk virtuel assistent",
+  "history.title": "Diagramhistorik",
+  "robot.intro": "Chat med mig",
   "topbar.logout": "Log ud",
   "topbar.theme": "Tema",
   "topbar.dark": "Mørk",
@@ -24,6 +26,7 @@
   "visualization.none": "Ingen visualisering valgt.",
   "visualization.boxNotImplemented": "Boksdiagram er ikke implementeret.",
   "visualization.notImplemented": "Denne diagramtype er endnu ikke implementeret.",
+  "visualization.title": "Datavisualisering",
   "visualization.type.line": "Linjediagram",
   "visualization.type.area": "Arealdiagram",
   "visualization.type.bar": "Søjlediagram",

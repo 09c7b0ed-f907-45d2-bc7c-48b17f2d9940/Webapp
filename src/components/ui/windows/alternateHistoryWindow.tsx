@@ -121,7 +121,7 @@ export default function AlternateHistoryWindow() {
 
   return (
     <div ref={containerRef} className="w-full h-full flex flex-col p-4">
-        <p className=" font-semibold text-primary">{t('historyWindow.title')}</p>
+        <p className=" font-semibold text-primary">{t('history.title')}</p>
         <ScrollArea
         ref={scrollRef}
         className="w-full flex-1"
@@ -164,7 +164,7 @@ export default function AlternateHistoryWindow() {
                                 )}
                                 style={{ height: "100%",  display: "flex", alignItems: "center", justifyContent: "center" }}
                             >   
-                                <div className="w-60 h-full flex grow-1 flex-col justify-center shadow-sm">
+                                <div className="w-60 h-full flex grow-1 flex-col justify-center border ">
                                     <div className="p-4 text-sm flex flex-1 flex-col justify-center h-full">
                                         <div className="font-semibold truncate">{(item as any).metadata?.title ?? ''}</div>
                                         <div className="text-xs text-muted-foreground truncate">

@@ -1,5 +1,7 @@
 {
   "app.title": "Asistente virtual clínico",
+  "history.title": "Historial de gráficos",
+  "robot.intro": "Chatea conmigo",
   "topbar.logout": "Cerrar sesión",
   "topbar.theme": "Tema",
   "topbar.dark": "Oscuro",
@@ -24,6 +26,7 @@
   "visualization.none": "No hay visualización seleccionada.",
   "visualization.boxNotImplemented": "La visualización de diagrama de caja no está implementada.",
   "visualization.notImplemented": "Este tipo de gráfico aún no está implementado.",
+  "visualization.title": "Visualización de datos",
   "visualization.type.line": "Gráfico de líneas",
   "visualization.type.area": "Gráfico de área",
   "visualization.type.bar": "Gráfico de barras",

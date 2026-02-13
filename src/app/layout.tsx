@@ -32,10 +32,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           }}
         />
       </head>
-      <body className="h-screen flex flex-col">
+      <body className="h-screen flex flex-col overflow-hidden">
         <SessionRoot>
           <TopBar />
-          <main className="h-full flex flex-col">{children}</main>
+          <main className="flex-1 flex min-h-0 overflow-hidden">{children}</main>
         </SessionRoot>
       </body>
     </html>

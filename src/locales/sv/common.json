@@ -1,5 +1,7 @@
 {
   "app.title": "Klinisk virtuell assistent",
+  "history.title": "Diagramhistorik",
+  "robot.intro": "Chatta med mig",
   "topbar.logout": "Logga ut",
   "topbar.theme": "Tema",
   "topbar.dark": "Mörkt",
@@ -24,6 +26,7 @@
   "visualization.none": "Ingen visualisering vald.",
   "visualization.boxNotImplemented": "Lådagram-visualisering är inte implementerad.",
   "visualization.notImplemented": "Denna diagramtyp är ännu inte implementerad.",
+  "visualization.title": "Datavisualisering",
   "visualization.type.line": "Linjediagram",
   "visualization.type.area": "Ytdiagram",
   "visualization.type.bar": "Stapeldiagram",
