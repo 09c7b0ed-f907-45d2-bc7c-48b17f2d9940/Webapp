@@ -88,7 +88,7 @@ export function ChatInput({
         title={t('chat.send')}
         className="rounded-full flex-shrink-0"
       >
-        {isLoading ? <Loader2 className="animate-spin size-6" /> : <SendIcon className="fill-white size-6" />}
+        {isLoading ? <Loader2 className="animate-spin size-6" /> : <SendIcon className="fill-white size-7 translate-x-0.5" />}
       </Button>
     </div>
   )
