@@ -5,6 +5,8 @@ import SessionRoot from "@/components/SessionRoot";
 import TopBar from "@/components/ui/TopBar";
 import { cookies } from 'next/headers';
 import { resources } from '@/locales/config';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SideMenu } from '@/components/ui/windows/threadHistoryWindow';
 
 const poppins = Poppins({ subsets: ['latin'], weight: ['300','400','500','600','700'], display: 'swap' });
 
@@ -35,7 +37,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="h-screen flex flex-col overflow-hidden">
         <SessionRoot>
           <TopBar />
-          <main className="flex-1 flex min-h-0 overflow-hidden">{children}</main>
+          <SidebarProvider defaultOpen={false}>
+              <div className="flex flex-1 overflow-hidden">
+              <SideMenu />
+                <main className="flex-1 min-h-0 overflow-hidden">
+                  {children}
+              </main>
+            </div>
+          </SidebarProvider>
         </SessionRoot>
       </body>
     </html>

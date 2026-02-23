@@ -23,6 +23,7 @@
     "next": "15.3.2",
     "next-auth": "^4.24.11",
     "next-i18next": "^15.4.2",
+    "radix-ui": "^1.4.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-i18next": "^15.7.3",

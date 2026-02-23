@@ -6,11 +6,13 @@ import AlternateHistoryWindow from "@/components/ui/windows/alternateHistoryWind
 import ChatWindow from "@/components/ui/windows/chatWindow";
 import HistoryWindow from "@/components/ui/windows/historyWindow";
 import VisualizationWindow from "@/components/ui/windows/visualizationWindow";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 
 export default function HomePage() {
   return (
-    <div className="h-full w-full flex-1 p-4">
+    
+    <div className="h-full w-full flex-1 p-4 pl-0">
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={30} minSize={15} collapsible>
           <div className="flex-auto h-full items-center justify-center pr-1 p-2">
