@@ -38,7 +38,6 @@ export default function HomePage() {
               <div className="flex h-full items-center justify-center p-2">
                 <Card className="h-full w-full p-0">
                     <CardContent className="h-full w-full p-2">
-                        {/* <HistoryWindow /> */}
                         <AlternateHistoryWindow />
                     </CardContent>
                 </Card>

@@ -122,19 +122,6 @@ export default function TopBar() {
 						})()}
 					</SelectContent>
 				</Select>
-				{/* Theme selector */}
-				{/* <Select value={theme} onValueChange={(v) => setTheme(v as any)}>
-					<SelectTrigger className="w-32" aria-label={t("topbar.theme")}>
-						<SelectValue placeholder={t("topbar.theme")} />
-					</SelectTrigger>
-					<SelectContent>
-						{themes.map((topt) => (
-							<SelectItem key={topt.value} value={topt.value}>
-								{t(topt.key)}
-							</SelectItem>
-						))}
-					</SelectContent>
-				</Select> */}
 				
 				<Button variant="ghost" className="border rounded hover:bg-black/75 hover:text-white transition-colors" onClick={() => setDark(!dark)} aria-label={t('topbar.toggleDarkMode')}>
 					{dark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
