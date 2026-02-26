@@ -8,17 +8,20 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
 import { SquarePen, Search, X, Pencil, Pin} from "lucide-react";
-import { use, useState } from "react";
+import { ArrowLeftToLine, PanelLeftIcon } from "lucide-react"
+import { use, useEffect, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup } from "@/components/ui/field";
 import {AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle,AlertDialogTrigger} from "@/components/ui/alert-dialog"
+import { getToken } from "next-auth/jwt";
  
 export function SideMenu() {
   const {
@@ -31,17 +34,17 @@ export function SideMenu() {
     toggleSidebar,
   } = useSidebar();
   
-    const [threads, setThreads] = useState(
-      Array.from({ length: 1 }, (_, i) => ({
-        id: i + 1,
-        name: `My Test Thread ${i + 1}`
-        // In a real application, you would fetch this data from an API or database
-      }))
-    );
-    const [openId, setOpenId] = useState<number | null>(null);
-    const deleteThread = (id:number) => {
-      setThreads(prev => prev.filter(thread => thread.id !== id));
-    };
+  const [threads, setThreads] = useState(
+    Array.from({ length: 1 }, (_, i) => ({
+      id: i + 1,
+      name: `My Test Thread ${i + 1}`
+      // In a real application, you would fetch this data from an API or database
+    }))
+  );
+  const [openId, setOpenId] = useState<number | null>(null);
+  const deleteThread = (id:number) => {
+    setThreads(prev => prev.filter(thread => thread.id !== id));
+  };
   const renameThread = (id:number, newName:string) => {
   if (!newName) return;
  
@@ -50,50 +53,100 @@ export function SideMenu() {
       thread.id === id
         ? { ...thread, name: newName }
         : thread
-    )
-  );
-};
+      )
+    );
+  };
+
+  async function getThreads() {
+    const res = await fetch('/api/cva/threads', {
+      method: 'GET',});
+    if (res.ok) {
+      const data = await res.json();
+      setThreads(data.threads || []);
+    } else {
+      console.error('Failed to fetch threads:', res.statusText);
+    }
+    return;
+  }
+
+async function postThread(name: string) {
+
+  const res = await fetch('/api/cva/threads', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name }), //Thread Name Goes Here
+  });
+
+  const text = await res.text();
+
+  if (res.ok) {
+    const newThread = await res.json();
+    setThreads(prev => [...prev, newThread]);
+  } else {
+    console.error('Failed to create thread:', res.status, res.statusText);
+  }
+}
+
+  async function newThread() {
+    const res = await fetch('/api/cva/threads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: `New Thread ${threads.length + 1}` }),
+    });
+    if (res.ok) {
+      const newThread = await res.json();
+      setThreads(prev => [...prev, newThread]);
+    } else {
+      console.error('Failed to create thread:', res.statusText);
+    }
+  }
+
+  useEffect(() => {
+    getThreads();
+}, []);
+  
   return (
-    <Sidebar collapsible="icon" variant="inset">
-      <SidebarHeader className="pt-30"/>
-            
-      {/* <span className="ml-2 hidden sm:inline">Hello from the side menu!</span> */}
-      <SidebarContent>
-        <SidebarGroup >
-          <SidebarTrigger />
+    <Sidebar collapsible="icon" variant="inset" className="overflow-hidden" >
+      <SidebarHeader className="pt-22"/>
+      <SidebarContent className="center-items">
+        <SidebarGroup className="" >
+          {/* <SidebarTrigger className=" hover:text-white hover:bg-sidebar-accent ml-auto ">
+          </SidebarTrigger> */}
+         <SidebarMenuButton
+         onClick={() => setOpen(!open)}
+          variant="outline"
+          tooltip={open ? "Collapse Sidebar" : "Expand Sidebar"}
+          className="w-full flex items-center justify-center hover:text-white"
+        >
+          <span className={open ? "ml-2" : "hidden"}>{open ? "Collapse" : ""}</span>
+          {open ? <ArrowLeftToLine className="size-4 ml-auto  " /> : <PanelLeftIcon className="size-4 ml-auto " />}
+           </SidebarMenuButton> 
         </SidebarGroup>
-        {/* <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <div className="text-sidebar-foreground/70 text-xs">
-          </div>
-        </SidebarGroup> */}
+        <SidebarSeparator className="" />
         <SidebarGroup>
           <Dialog
-            // open={openId === thread.id}
-            // onOpenChange={(open) => setOpenId(open ? thread.id : null)}
           >
             <DialogTrigger asChild>
               <SidebarMenuButton
                 variant="outline"
-                className="w-full flex items-center justify-center md:justify-start"
+                tooltip={"Create New Thread"}
+                className="w-full flex items-center justify-center md:justify-start hover:text-white"
               
               >
-                <SquarePen className="w-4 h-4 group-hover:text-primary" />
+                <SquarePen className="w-4 h-4" />
                 <span className="ml-2">New Thread</span>
               </SidebarMenuButton>
             </DialogTrigger>
             <DialogContent className="sm:max-w-sm">
               <form
-                onSubmit={(e) => {
-                  const newThreadId = threads.length > 0 ? threads[threads.length - 1].id + 1 : 1;
-                  const newThread = { id: newThreadId, name: `New Thread ${threads.length + 1}` };
-                  setThreads(prev => [
-                    ...prev,
-                    newThread
-                  ]);
+                onSubmit={(e: React.FormEvent) => {
+                  // const newThreadId = threads.length > 0 ? threads[threads.length - 1].id + 1 : 1;
+                  // const newThread = { id: newThreadId, name: `New Thread ${threads.length + 1}` };
                   e.preventDefault();
-                  const input = e.currentTarget.elements.namedItem("name") as HTMLInputElement;
-                  renameThread(newThreadId, input.value);
-                  setOpenId(null);
+                  // const input = e.currentTarget.elements.namedItem("name") as HTMLInputElement;
+                  postThread("Test");
                 }}
               >
                 <DialogHeader className="mb-2">
@@ -123,7 +176,8 @@ export function SideMenu() {
           </Dialog>
           <SidebarMenuButton
             variant="outline"
-            className="w-full flex items-center justify-center md:justify-start"
+            tooltip={"Search Threads"}
+            className="w-full flex items-center justify-center md:justify-start hover:text-white"
           >
             <Search className="w-4 h-4" />
             <span className="ml-2">Search Threads</span>
@@ -244,7 +298,7 @@ export function SideMenu() {
                 </SidebarMenuItem>
               ))}
             </div>
-          </SidebarGroup>
+          </SidebarGroup>          
         </SidebarContent>
       <SidebarFooter />
     </Sidebar>

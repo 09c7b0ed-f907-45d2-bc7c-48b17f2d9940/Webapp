@@ -80,7 +80,7 @@ export default function TopBar() {
 
 	return (
 		<div
-			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0 flex-shrink-0" // added flex-shrink-0
+			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0 flex-shrink-0 z-10" // added flex-shrink-0
 			id="sym:TopBar"
 		>
 			<div className="flex items-center gap-2 h-10">
@@ -135,7 +135,7 @@ export default function TopBar() {
 					</SelectContent>
 				</Select> */}
 				
-				<Button variant="ghost" className="border rounded hover:bg-black/75 hover:text-white transition-colors" onClick={() => setDark(!dark)} aria-label={t('topbar.toggleDarkMode')}>
+				<Button variant="ghost" className="border rounded hover:bg-black/75 dark:hover:bg-white hover:text-white transition-colors dark:hover:text-black" onClick={() => setDark(!dark)} aria-label={t('topbar.toggleDarkMode')}>
 					{dark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
 				</Button>
 				<Button variant="ghost" className="border rounded hover:bg-destructive hover:text-white transition-colors" onClick={() => signOut()} aria-label={t('topbar.logout')}>
