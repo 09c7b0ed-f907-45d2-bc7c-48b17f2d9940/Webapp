@@ -55,6 +55,11 @@ export async function POST(req: NextRequest, { params }: Params) {
   }
 
   const body = await req.json();
+  const payload = body && typeof body === "object" ? { ...(body as Record<string, unknown>) } : {};
+
+  if (payload.content && !Array.isArray(payload.content)) {
+    payload.content = [payload.content];
+  }
   const { id } = await params;
   const baseUrl = getCvaBaseUrl();
 
@@ -64,7 +69,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       Authorization: `Bearer ${String(token.accessToken)}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
 
   return forwardResponse(res);
