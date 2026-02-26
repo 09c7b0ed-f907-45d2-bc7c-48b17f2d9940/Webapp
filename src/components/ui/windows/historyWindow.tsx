@@ -25,50 +25,52 @@ export default function HistoryWindow() {
   const { t } = useTranslation('common');
 
   // Debug fallback data for visual testing when `history` is empty
-  const debugHistory: VisualizationResponseDTO[] = [
-    {
-      charts: [
-        { metadata: { title: 'Sample Bar Chart' }, type: 'BAR' } as any,
-      ],
-    } as any,
-    {
-      charts: [
-        { metadata: { title: 'Sample Line Chart' }, type: 'LINE' } as any,
-      ],
-    } as any,
-    {
-      charts: [
-        { metadata: { title: 'Sample Pie Chart' }, type: 'PIE' } as any,
-      ],
-    } as any,
-    {
-      charts: [
-        { metadata: { title: 'Sample Box Chart' }, type: 'BOX' } as any,
-      ],
-    } as any,
-    {
-      charts: [
-        { metadata: { title: 'Sample Bar Chart' }, type: 'BAR' } as any,
-      ],
-    } as any,
-    {
-      charts: [
-        { metadata: { title: 'Sample Line Chart' }, type: 'LINE' } as any,
-      ],
-    } as any,
-    {
-      charts: [
-        { metadata: { title: 'Sample Pie Chart' }, type: 'PIE' } as any,
-      ],
-    } as any,
-    {
-      charts: [
-        { metadata: { title: 'Sample Box Chart' }, type: 'BOX' } as any,
-      ],
-    } as any,
-  ];
+  // const debugHistory: VisualizationResponseDTO[] = [
+  //   {
+  //     charts: [
+  //       { metadata: { title: 'Sample Bar Chart' }, type: 'BAR' } as any,
+  //     ],
+  //   } as any,
+  //   {
+  //     charts: [
+  //       { metadata: { title: 'Sample Line Chart' }, type: 'LINE' } as any,
+  //     ],
+  //   } as any,
+  //   {
+  //     charts: [
+  //       { metadata: { title: 'Sample Pie Chart' }, type: 'PIE' } as any,
+  //     ],
+  //   } as any,
+  //   {
+  //     charts: [
+  //       { metadata: { title: 'Sample Box Chart' }, type: 'BOX' } as any,
+  //     ],
+  //   } as any,
+  //   {
+  //     charts: [
+  //       { metadata: { title: 'Sample Bar Chart' }, type: 'BAR' } as any,
+  //     ],
+  //   } as any,
+  //   {
+  //     charts: [
+  //       { metadata: { title: 'Sample Line Chart' }, type: 'LINE' } as any,
+  //     ],
+  //   } as any,
+  //   {
+  //     charts: [
+  //       { metadata: { title: 'Sample Pie Chart' }, type: 'PIE' } as any,
+  //     ],
+  //   } as any,
+  //   {
+  //     charts: [
+  //       { metadata: { title: 'Sample Box Chart' }, type: 'BOX' } as any,
+  //     ],
+  //   } as any,
+  // ];
 
-  const displayHistory = (history && history.length > 0) ? history : debugHistory;
+  // const displayHistory = (history && history.length > 0) ? history : debugHistory;
+  
+  const displayHistory = history;
 
   const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
 
