@@ -5,6 +5,20 @@ import { getCvaBaseUrl } from "@/lib/cvaConfig";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function getSubjectFromAccessToken(rawToken: string): string | null {
+  const parts = rawToken.split(".");
+  if (parts.length < 2) return null;
+
+  try {
+    const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf-8")) as {
+      sub?: unknown;
+    };
+    return typeof payload.sub === "string" ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 async function forwardResponse(res: Response) {
   const contentType = res.headers.get("content-type") || "";
 
@@ -50,6 +64,26 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
+  const subjectFromAccessToken = getSubjectFromAccessToken(String(token.accessToken));
+  const subject = subjectFromAccessToken ?? (typeof token.sub === "string" ? token.sub : null);
+
+  const payload =
+    body && typeof body === "object"
+      ? {
+          ...(body as Record<string, unknown>),
+          user:
+            (body as Record<string, unknown>).user ??
+            subject,
+        }
+      : { name: "Conversation", user: subject };
+
+  if (!payload.user) {
+    return NextResponse.json(
+      { message: "Missing user subject for thread creation" },
+      { status: 400 }
+    );
+  }
+
   const baseUrl = getCvaBaseUrl();
 
   const res = await fetch(`${baseUrl}/threads`, {
@@ -58,7 +92,7 @@ export async function POST(req: NextRequest) {
       Authorization: `Bearer ${String(token.accessToken)}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
 
   return forwardResponse(res);
