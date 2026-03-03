@@ -80,7 +80,7 @@ export default function TopBar() {
 
 	return (
 		<div
-			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0 flex-shrink-0 z-10" // added flex-shrink-0
+			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0 flex-shrink-0 z-10 bg-" // added flex-shrink-0
 			id="sym:TopBar"
 		>
 			<div className="flex items-center gap-2 h-10">

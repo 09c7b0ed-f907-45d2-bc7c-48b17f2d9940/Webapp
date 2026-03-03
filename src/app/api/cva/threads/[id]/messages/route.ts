@@ -57,9 +57,12 @@ export async function POST(req: NextRequest, { params }: Params) {
   const body = await req.json();
   const payload = body && typeof body === "object" ? { ...(body as Record<string, unknown>) } : {};
 
+  // the upstream API currently requires `content` to be an array; normalize any
+  // single objects that slip through so callers don't constantly have to do it
   if (payload.content && !Array.isArray(payload.content)) {
     payload.content = [payload.content];
   }
+
   const { id } = await params;
   const baseUrl = getCvaBaseUrl();
 

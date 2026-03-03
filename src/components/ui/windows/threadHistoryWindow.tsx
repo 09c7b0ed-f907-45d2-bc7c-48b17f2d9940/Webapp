@@ -21,8 +21,17 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Input } from "@/components/ui/input";
 import { Field, FieldGroup } from "@/components/ui/field";
 import {AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle,AlertDialogTrigger} from "@/components/ui/alert-dialog"
-import { getToken } from "next-auth/jwt";
- 
+import { toast } from "sonner";
+import { useThread } from "@/components/ThreadContext";
+import { useTranslation } from "react-i18next";
+import "@/i18n";
+
+
+type Thread = {
+  id: number;
+  name: string;
+}
+
 export function SideMenu() {
   const {
     state,
@@ -34,273 +43,261 @@ export function SideMenu() {
     toggleSidebar,
   } = useSidebar();
   
-  const [threads, setThreads] = useState(
-    Array.from({ length: 1 }, (_, i) => ({
-      id: i + 1,
-      name: `My Test Thread ${i + 1}`
-      // In a real application, you would fetch this data from an API or database
-    }))
-  );
+  const { t } = useTranslation('common');
+
+  const [threads, setThreads] = useState<Thread[]>([]);
   const [openId, setOpenId] = useState<number | null>(null);
+  // separate state for delete dialog so rename and delete can coexist
+  const [deleteOpenId, setDeleteOpenId] = useState<number | null>(null);
+
+  const { currentThreadId, setCurrentThreadId } = useThread();
+
+  // Placeholder functions for delete and rename - replace with actual API calls
   const deleteThread = (id:number) => {
-    setThreads(prev => prev.filter(thread => thread.id !== id));
+    toast("Thread has been deleted! (But not actually)");
+    // close any open delete dialog
+    if (deleteOpenId === id) setDeleteOpenId(null);
   };
   const renameThread = (id:number, newName:string) => {
-  if (!newName) return;
- 
-  setThreads(prev =>
-    prev.map(thread =>
-      thread.id === id
-        ? { ...thread, name: newName }
-        : thread
-      )
-    );
+    toast("Thread has been renamed! (But not actually)")
   };
 
   async function getThreads() {
-    const res = await fetch('/api/cva/threads', {
-      method: 'GET',});
-    if (res.ok) {
-      const data = await res.json();
-      setThreads(data.threads || []);
-    } else {
+  try {
+    const res = await fetch('/api/cva/threads', { method: 'GET' });
+
+    if (!res.ok) {
       console.error('Failed to fetch threads:', res.statusText);
+      return;
     }
-    return;
+
+    const data = await res.json();
+
+    const newThreads = (data.results || []);
+    setThreads(newThreads);
+    if (currentThreadId === null && newThreads.length > 0) {
+      setCurrentThreadId(newThreads[0].id);
+    }
+    } catch (err) {
+      console.error('Error fetching threads:', err);
+    }
   }
 
-async function postThread(name: string) {
-
-  const res = await fetch('/api/cva/threads', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ name }), //Thread Name Goes Here
-  });
-
-  const text = await res.text();
-
-  if (res.ok) {
-    const newThread = await res.json();
-    setThreads(prev => [...prev, newThread]);
-  } else {
-    console.error('Failed to create thread:', res.status, res.statusText);
-  }
-}
-
-  async function newThread() {
+  async function postThread(name: string) {
     const res = await fetch('/api/cva/threads', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: `New Thread ${threads.length + 1}` }),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name }),
     });
+
+    const data = await res.json();
+
     if (res.ok) {
-      const newThread = await res.json();
-      setThreads(prev => [...prev, newThread]);
+      toast(`Thread ${name} has been created`)
+      setCurrentThreadId(data.id);
+      getThreads();
+      
     } else {
-      console.error('Failed to create thread:', res.statusText);
+      console.error('Failed to create thread:', res.status, data);
     }
   }
 
+
   useEffect(() => {
+    setOpen(true);
     getThreads();
-}, []);
+  }, []);
   
   return (
     <Sidebar collapsible="icon" variant="inset" className="overflow-hidden" >
-      <SidebarHeader className="pt-22"/>
-      <SidebarContent className="center-items">
-        <SidebarGroup className="" >
-          {/* <SidebarTrigger className=" hover:text-white hover:bg-sidebar-accent ml-auto ">
-          </SidebarTrigger> */}
-         <SidebarMenuButton
-         onClick={() => setOpen(!open)}
-          variant="outline"
-          tooltip={open ? "Collapse Sidebar" : "Expand Sidebar"}
-          className="w-full flex items-center justify-center hover:text-white"
-        >
-          <span className={open ? "ml-2" : "hidden"}>{open ? "Collapse" : ""}</span>
-          {open ? <ArrowLeftToLine className="size-4 ml-auto  " /> : <PanelLeftIcon className="size-4 ml-auto " />}
-           </SidebarMenuButton> 
-        </SidebarGroup>
-        <SidebarSeparator className="" />
-        <SidebarGroup>
-          <Dialog
+      <SidebarHeader className="pt-22 pb-0">
+          <SidebarMenuButton
+            onClick={() => setOpen(!open)}
+            variant="outline"
+            tooltip={open ? t('threads.menu.collapse') : t('threads.menu.expand')}
+            className="w-full flex items-center justify-center hover:text-white"
           >
+          <span className={open ? "ml-2" : "hidden"}>{open ? t('threads.menu.collapse') : ""}</span>
+          {open ? <ArrowLeftToLine className="size-4 ml-auto" /> : <PanelLeftIcon className="size-4 ml-auto" />}
+          </SidebarMenuButton> 
+        <SidebarSeparator />
+      </SidebarHeader>
+      <SidebarContent className="center-items">
+        <SidebarGroup>
+          <Dialog>
             <DialogTrigger asChild>
               <SidebarMenuButton
                 variant="outline"
-                tooltip={"Create New Thread"}
+                tooltip={t('threads.menu.new')}
                 className="w-full flex items-center justify-center md:justify-start hover:text-white"
-              
               >
                 <SquarePen className="w-4 h-4" />
-                <span className="ml-2">New Thread</span>
+                <span className="ml-2">{t('threads.menu.new')}</span>
               </SidebarMenuButton>
             </DialogTrigger>
             <DialogContent className="sm:max-w-sm">
               <form
-                onSubmit={(e: React.FormEvent) => {
-                  // const newThreadId = threads.length > 0 ? threads[threads.length - 1].id + 1 : 1;
-                  // const newThread = { id: newThreadId, name: `New Thread ${threads.length + 1}` };
+                onSubmit={(e) => {
                   e.preventDefault();
-                  // const input = e.currentTarget.elements.namedItem("name") as HTMLInputElement;
-                  postThread("Test");
+                  const input = e.currentTarget.elements.namedItem("name") as HTMLInputElement;
+                  postThread(input.value);
                 }}
               >
                 <DialogHeader className="mb-2">
-                  <DialogTitle>Rename Conversation Thread</DialogTitle>
+                  <DialogTitle>{t('threads.new.title')}</DialogTitle>
                   <DialogDescription>
-                    Change the name of your conversation thread. Click save when you're done.
+                    {t('threads.new.description')}
                   </DialogDescription>
                 </DialogHeader>
                 <Field className="mb-6">
                   <Input
                     name="name"
-                    defaultValue={threads[threads.length - 1]?.name || "New Thread"}
+                    defaultValue={t('threads.name.default') + (threads.length - 1)}
                   />
                 </Field>
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button type="button" variant="outline">
-                      Cancel
+                    <Button type="button" variant="outline" className="hover:text-white">
+                      {t('threads.dialog.cancel')}
                     </Button>
                   </DialogClose>
-                  <Button type="submit">
-                    Save changes
-                  </Button>
+                  <DialogClose asChild>
+                    <Button type="submit">
+                      {t('threads.dialog.save')}
+                    </Button>
+                  </DialogClose>
                 </DialogFooter>
               </form>
             </DialogContent>
           </Dialog>
           <SidebarMenuButton
             variant="outline"
-            tooltip={"Search Threads"}
-            className="w-full flex items-center justify-center md:justify-start hover:text-white"
+            tooltip={t('threads.menu.search')}
+            className="w-full flex items-center justify-center md:justify-start hover:text-white" 
+            onClick={() => toast("Search Threads clicked! (Not Yet Implemented)") }
           >
             <Search className="w-4 h-4" />
-            <span className="ml-2">Search Threads</span>
+            <span className="ml-2">{t('threads.menu.search')}</span>
           </SidebarMenuButton>
         </SidebarGroup>
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
           <div className="text-sidebar-foreground/70 text-xs truncate">
-            Conversation Threads
-          </div>
-          <div>
+            {t('threads.menu.list')}
+          </div> 
+          <div> 
             {threads.map((thread) => (
               <SidebarMenuItem key={thread.id}>
-                <div className="ml-2 relative group/item flex flex-row items-center rounded-md hover:bg-sidebar-accent cursor-pointer">
+                <div className="relative group/item flex flex-row items-center rounded-md min-w-0 hover:bg-sidebar-accent cursor-pointer">
                   <SidebarMenuButton
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Reloade Conversation here
+                      setCurrentThreadId(thread.id);
                     }}
-                    className="flex-2">
-                    <span className="truncate">{thread.name}</span>
+                    className=" group-hover/item:text-white hover:text-white">
+                    <span className="truncate ml-2">{thread.name}</span>
                   </SidebarMenuButton>
-                    <Dialog
-                      open={openId === thread.id}
-                      onOpenChange={(open) => setOpenId(open ? thread.id : null)}
-                    >
-                      <DialogTrigger asChild>
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          className="opacity-0 transition-opacity duration-75 group-hover/item:opacity-100 p-1 rounded hover:text-primary"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-sm">
-                        <form
-                          onSubmit={(e) => {
-                            e.preventDefault();
-                            const input = e.currentTarget.elements.namedItem("name") as HTMLInputElement;
-                            renameThread(thread.id, input.value);
-                            setOpenId(null);
-                          }}
-                        >
-                          <DialogHeader className="mb-2">
-                            <DialogTitle>Rename Conversation Thread</DialogTitle>
-                            <DialogDescription>
-                              Change the name of your conversation thread. Click save when you're done.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <Field className="mb-6">
-                            <Input
-                              name="name"
-                              defaultValue={thread.name}
-                            />
-                          </Field>
-                          <DialogFooter>
-                            <DialogClose asChild>
-                              <Button type="button" variant="outline">
-                                Cancel
-                              </Button>
-                            </DialogClose>
-                            <Button type="submit">
-                              Save changes
+                  <Dialog
+                    open={openId === thread.id}
+                    onOpenChange={(open) => setOpenId(open ? thread.id : null)}
+                  >
+                    <DialogTrigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className=" opacity-0 transition-opacity duration-75 group-hover/item:opacity-100 p-1 rounded text-white  hover:text-black"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-sm">
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const input = e.currentTarget.elements.namedItem("name") as HTMLInputElement;
+                          renameThread(thread.id, input.value);
+                          setOpenId(null);
+                        }}
+                      >
+                        <DialogHeader className="mb-2">
+                          <DialogTitle>{t('threads.rename.title')}</DialogTitle>
+                          <DialogDescription>
+                            {t('threads.rename.description')}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <Field className="mb-6">
+                          <Input
+                            name="name"
+                            defaultValue={thread.name}
+                          />
+                        </Field>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button type="button" variant="outline" className="hover:text-white">
+                              {t('threads.dialog.cancel')}
                             </Button>
-                          </DialogFooter>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
-                  <div className="flex-1"/>
-                    <AlertDialog >
-                      <AlertDialogTrigger asChild>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // Don't trigger row click
-                          }}
-                          className="
-                            absolute right-2 top-1/2 -translate-y-1/2
-                            opacity-0
-                            transition-opacity duration-75
-                            group-hover/item:opacity-100
-                            p-1 rounded hover:text-red-600
-                          "
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent
-                        onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                          </DialogClose>
+                          <Button type="submit">
+                            {t('threads.dialog.save')}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                  <div className="mx-auto flex-1"/>
+                  <AlertDialog
+                    open={deleteOpenId === thread.id}
+                    onOpenChange={(open) =>
+                      setDeleteOpenId(open ? thread.id : null)
+                    }
+                  >
+                    <AlertDialogTrigger asChild>
+                      <button
+                        onClick={(e) => {e.stopPropagation(); }}
+                        className="mr-2 opacity-0 transition-opacity duration-75 group-hover/item:opacity-100 p-1 rounded text-white hover:text-red-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <form
+                        onSubmit={(e) => {
                           e.preventDefault();
                           deleteThread(thread.id);
-                        }
-                      }}>
-                        <form onSubmit={(e) => {
-                          e.preventDefault();  // prevent default form submission
-                          deleteThread(thread.id); // your destructive action
-                        }}>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure you want to delete Conversation Thread: {thread.name}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the conversation and graphs from your account
-                              from our servers.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              asChild
-                              variant="destructive"
-                              onClick={() => deleteThread(thread.id)}
-                            >
-                              <button type="submit">Delete</button>
-                            </AlertDialogAction>                          
-                          </AlertDialogFooter>
-                        </form>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </SidebarMenuItem>
-              ))}
-            </div>
-          </SidebarGroup>          
-        </SidebarContent>
-      <SidebarFooter />
-    </Sidebar>
+                        }}
+                        onKeyDown={(e) => {
+                          // catch Enter presses even if no focusable input is present
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            deleteThread(thread.id);
+                          }
+                        }}
+                      >
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t('threads.delete.title')} {thread.name}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t('threads.delete.description')}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="hover:text-white">{t('threads.dialog.cancel')}</AlertDialogCancel>
+                          <AlertDialogAction
+                            asChild
+                            variant="destructive"
+                          >
+                            <button type="submit" className="hover:text-shadow-2xs">{t('threads.dialog.delete') }</button>
+                          </AlertDialogAction>                          
+                        </AlertDialogFooter>
+                      </form>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              </SidebarMenuItem>
+            ))}
+          </div>
+        </SidebarGroup>          
+      </SidebarContent>
+    <SidebarFooter />
+  </Sidebar>
   )
 }

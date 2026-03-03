@@ -10,6 +10,9 @@ import { useTranslation } from "react-i18next";
 import "@/i18n";
 import { WaveAsset } from "../Assets/wave-asset";
 import { RobotIcon } from "../Icons/robot-icon";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useThread } from "@/components/ThreadContext";
+import { toast } from "sonner";
 
 type Message = {
   id: string;
@@ -18,8 +21,13 @@ type Message = {
   kind?: "normal" | "progress";
 };
 
+
 export default function ChatWindow() {
+
+  const { currentThreadId } = useThread();
+  
   const [messages, setMessages] = useState<Message[]>([]);
+  const [loading, setLoading] = useState(false);
   const language = useSettingsStore((s) => s.language);
   const { t } = useTranslation('common');
 
@@ -61,6 +69,66 @@ export default function ChatWindow() {
     applyVisualizationFromCustom(custom);
   };
 
+  function mapUiMessageToApi(msg: Message) {
+    return {
+      role: msg.sender === "user" ? "user" : "assistant",
+      // the CVA API expects `content` to be an array of content blocks
+      content: [
+        {
+          type: "text",
+          text: msg.content,
+        },
+      ],
+    };
+  }
+
+ useEffect(() => { //fetch messages when thread changes
+    if (!currentThreadId) return;
+
+    async function fetchMessages() {
+      setLoading(true);
+      try {
+        const allMessages: Message[] = [];
+        let offset = 0;
+        const limit = 100; // adjust based on API max
+
+        while (true) {
+          const res = await fetch(`/api/cva/threads/${currentThreadId}/messages?limit=${limit}&offset=${offset}`);
+          if (!res.ok) throw new Error("Failed to fetch messages");
+
+          const data = await res.json();
+
+          const mapped = (data.results || []).map((apiMsg: any) => {
+            const textContent = Array.isArray(apiMsg.content)
+              ? apiMsg.content.map((c: any) => c.text || "").join("\n")
+              : typeof apiMsg.content === "string"
+              ? apiMsg.content
+              : "";
+            return {
+              id: apiMsg.id || crypto.randomUUID(),
+              sender: apiMsg.role === "user" ? "user" : "other",
+              content: textContent,
+            } as Message;
+          });
+
+          allMessages.push(...mapped);
+
+          if ((data.results || []).length < limit) break; // no more pages
+          offset += limit;
+        }
+
+        setMessages(allMessages.reverse());
+      } catch (err) {
+        console.error(err);
+      } finally {
+        // small delay to avoid flicker
+        setTimeout(() => setLoading(false), 150);
+      }
+    }
+
+    fetchMessages();
+  }, [currentThreadId]);
+
   useEffect(() => {
     const es = new EventSource("/api/rasa/stream", { withCredentials: true });
 
@@ -77,6 +145,10 @@ export default function ChatWindow() {
               content: data.text,
             };
             setMessages((prev) => [...prev, botMsg]);
+            // Store bot response in thread history
+            postMessage(botMsg).catch(err => {
+              console.error("Failed to store SSE message to thread:", err);
+            });
           }
           const custom = (data as any).custom;
           if (custom) {
@@ -97,6 +169,23 @@ export default function ChatWindow() {
     };
   }, []);
 
+async function postMessage(msg: Message) {
+  const res = await fetch(`/api/cva/threads/${currentThreadId}/messages`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(mapUiMessageToApi(msg)),
+    credentials: "include",
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    console.error("Failed to create message:", res.status, data);
+  }
+}
+
   const sendMessage = async (msg: string) => {
     const userMsg: Message = {
       id: crypto.randomUUID(),
@@ -105,6 +194,10 @@ export default function ChatWindow() {
     };
 
     setMessages((prev) => [...prev, userMsg]);
+    //Store user message in thread history
+    postMessage(userMsg).catch(err => {
+      console.error("Failed to post message to thread:", err);
+    });
 
     try {
       const res = await fetch("/api/rasa", {
@@ -126,6 +219,7 @@ export default function ChatWindow() {
         let buf = "";
         let hasAnyText = false;
         let lastBotMsgId: string | null = null;
+        let lastBotMsg: Message | null = null;
 
         if (reader) {
           while (true) {
@@ -142,10 +236,14 @@ export default function ChatWindow() {
                   hasAnyText = true;
                   if (!lastBotMsgId) {
                     lastBotMsgId = crypto.randomUUID();
-                    setMessages((prev) => [...prev, { id: lastBotMsgId!, sender: "other", content: obj.text }]);
+                    const newMsg: Message = { id: lastBotMsgId, sender: "other", content: obj.text };
+                    lastBotMsg = newMsg;
+                    setMessages((prev) => [...prev, newMsg]);
                   } else {
                     const id = lastBotMsgId;
-                    setMessages((prev) => prev.map(m => m.id === id ? { ...m, content: m.content ? `${m.content}\n${obj.text}` : obj.text } : m));
+                    const updatedContent: string = lastBotMsg!.content ? `${lastBotMsg!.content}\n${obj.text}` : obj.text;
+                    lastBotMsg = { ...lastBotMsg!, content: updatedContent };
+                    setMessages((prev) => prev.map(m => m.id === id ? lastBotMsg! : m));
                   }
                 }
                 if (obj.custom) {
@@ -157,9 +255,10 @@ export default function ChatWindow() {
             }
           }
         }
-
-        if (!hasAnyText) {
-          // No-op; some actions might only emit custom payloads.
+        if (hasAnyText && lastBotMsg) {
+          postMessage(lastBotMsg).catch(err => {
+            console.error("Failed to store streaming message to thread:", err);
+          });
         }
       } else {
         const data = await res.json();
@@ -170,6 +269,9 @@ export default function ChatWindow() {
             content: data.reply,
           };
           setMessages((prev) => [...prev, botMsg]);
+          postMessage(botMsg).catch(err => {
+            console.error("Failed to store bot response to thread:", err);
+          });
         }
         applyVisualizationFromCustom(data.custom);
       }
@@ -181,6 +283,9 @@ export default function ChatWindow() {
         content: t('chat.error'),
       };
       setMessages((prev) => [...prev, errorMsg]);
+      postMessage(errorMsg).catch(err => {
+        console.error("Failed to store error message to thread:", err);
+      });
     }
   };
 
@@ -195,8 +300,21 @@ export default function ChatWindow() {
         <WaveAsset className=" absolute w-full max-h-15 min-h-10 fill-gradient-to-r from-primary to-accent align-self bg-transparent z-1 p-0" />
       </div>
       <div className=" p-4 flex-1 pt-0 flex flex-col h-full min-h-0 w-full">
-        <ChatMessageList  messages={messages} />
-        {/* <div className="h-6 bg-gradient-to-b from-transparent to-black/5 pointer-events-none p-0"></div> */}
+        {loading ? (
+          <div className="flex-1 flex flex-col gap-3 h-full w-full">
+            <div className="flex flex-col h-full gap-2 w-full">
+              <Skeleton className="h-6 max-w-[60%] mt-10 bg-muted" />
+              <Skeleton className="h-6 max-w-[70%] bg-muted" />
+              <Skeleton className="h-6 max-w-[70%] bg-muted" />
+              <Skeleton className="h-6 max-w-[50%] bg-muted" />
+              <Skeleton className="h-6 max-w-[60%] mt-10 bg-muted" />
+              <Skeleton className="h-6 max-w-[70%] bg-muted" />
+              <Skeleton className="h-6 max-w-[50%] bg-muted" />
+            </div>
+          </div>
+         ) : (
+          <ChatMessageList  messages={messages} />
+        )}
         <ChatInput onSubmit={sendMessage} disabled={false} />
       </div>
     </div>

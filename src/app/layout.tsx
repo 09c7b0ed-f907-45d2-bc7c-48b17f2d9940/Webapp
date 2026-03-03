@@ -7,6 +7,8 @@ import { cookies } from 'next/headers';
 import { resources } from '@/locales/config';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { SideMenu } from '@/components/ui/windows/threadHistoryWindow';
+import { Toaster } from '@/components/ui/sonner';
+import { ThreadProvider } from '@/components/ThreadContext';
 
 const poppins = Poppins({ subsets: ['latin'], weight: ['300','400','500','600','700'], display: 'swap' });
 
@@ -37,14 +39,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="h-screen flex flex-col overflow-hidden">
         <SessionRoot>
           <TopBar />
+          <ThreadProvider>
           <SidebarProvider defaultOpen={false} >
               <div className="flex flex-1 overflow-hidden">
               <SideMenu />
                 <main className="flex-1 min-h-0 overflow-hidden">
                   {children}
               </main>
+              <Toaster />
             </div>
           </SidebarProvider>
+          </ThreadProvider>
         </SessionRoot>
       </body>
     </html>
