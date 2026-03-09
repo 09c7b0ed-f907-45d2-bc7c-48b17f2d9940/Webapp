@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useTranslation } from "react-i18next";
-import i18n from "../../i18n";
+import i18n from "../../../i18n";
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/locales/config";
 
 const themes = [
@@ -80,7 +80,7 @@ export default function TopBar() {
 
 	return (
 		<div
-			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0 flex-shrink-0 z-10 bg-" // added flex-shrink-0
+			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0 flex-shrink-0 z-10 bg-background"
 			id="sym:TopBar"
 		>
 			<div className="flex items-center gap-2 h-10">

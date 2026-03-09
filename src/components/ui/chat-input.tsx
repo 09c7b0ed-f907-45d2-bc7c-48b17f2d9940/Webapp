@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ChevronRight, Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import "@/i18n"
-import { SendIcon } from "./Icons/send-icon"
+import { SendIcon } from "./icons/send-icon"
 import { cn } from "@/lib/utils"
 
 interface ChatInputProps {

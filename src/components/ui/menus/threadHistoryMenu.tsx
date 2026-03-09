@@ -47,20 +47,17 @@ export function SideMenu() {
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [openId, setOpenId] = useState<number | null>(null);
-  // separate state for delete dialog so rename and delete can coexist
-  const [deleteOpenId, setDeleteOpenId] = useState<number | null>(null);
 
   const { currentThreadId, setCurrentThreadId } = useThread();
 
   // Placeholder functions for delete and rename - replace with actual API calls
   const deleteThread = (id:number) => {
-    toast("Thread has been deleted! (But not actually)");
-    // close any open delete dialog
-    if (deleteOpenId === id) setDeleteOpenId(null);
+    toast("Thread has been deleted! (Not Yet Implemented)");
   };
   const renameThread = (id:number, newName:string) => {
-    toast("Thread has been renamed! (But not actually)")
+    toast("Thread has been renamed! (Not Yet Implemented)")
   };
+  ////
 
   async function getThreads() {
   try {
@@ -111,6 +108,7 @@ export function SideMenu() {
   }, []);
   
   return (
+    //Collaps/Expand Button
     <Sidebar collapsible="icon" variant="inset" className="overflow-hidden" >
       <SidebarHeader className="pt-22 pb-0">
           <SidebarMenuButton
@@ -124,10 +122,14 @@ export function SideMenu() {
           </SidebarMenuButton> 
         <SidebarSeparator />
       </SidebarHeader>
+
+      {/* Utility Buttons*/}
       <SidebarContent className="center-items">
         <SidebarGroup>
           <Dialog>
             <DialogTrigger asChild>
+
+              {/* New Thread Button*/}
               <SidebarMenuButton
                 variant="outline"
                 tooltip={t('threads.menu.new')}
@@ -172,6 +174,8 @@ export function SideMenu() {
               </form>
             </DialogContent>
           </Dialog>
+
+          {/* Search Threads Button*/}
           <SidebarMenuButton
             variant="outline"
             tooltip={t('threads.menu.search')}
@@ -182,18 +186,21 @@ export function SideMenu() {
             <span className="ml-2">{t('threads.menu.search')}</span>
           </SidebarMenuButton>
         </SidebarGroup>
+
+        {/*Conversation Threads List*/}
         <SidebarGroup className="group-data-[collapsible=icon]:hidden">
           <div className="text-sidebar-foreground/70 text-xs truncate">
             {t('threads.menu.list')}
           </div> 
           <div> 
             {threads.map((thread) => (
-              <SidebarMenuItem key={thread.id}>
+              <SidebarMenuItem key={thread.id} >
                 <div className="relative group/item flex flex-row items-center rounded-md min-w-0 hover:bg-sidebar-accent cursor-pointer">
                   <SidebarMenuButton
                     onClick={(e) => {
                       e.stopPropagation();
                       setCurrentThreadId(thread.id);
+                      
                     }}
                     className=" group-hover/item:text-white hover:text-white">
                     <span className="truncate ml-2">{thread.name}</span>
@@ -210,6 +217,8 @@ export function SideMenu() {
                         <Pencil className="w-4 h-4" />
                       </button>
                     </DialogTrigger>
+
+                    {/* Rename Thread Button*/}
                     <DialogContent className="sm:max-w-sm">
                       <form
                         onSubmit={(e) => {
@@ -244,13 +253,11 @@ export function SideMenu() {
                       </form>
                     </DialogContent>
                   </Dialog>
+                  
                   <div className="mx-auto flex-1"/>
-                  <AlertDialog
-                    open={deleteOpenId === thread.id}
-                    onOpenChange={(open) =>
-                      setDeleteOpenId(open ? thread.id : null)
-                    }
-                  >
+
+                  {/* Delete Thread Button */}
+                  <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <button
                         onClick={(e) => {e.stopPropagation(); }}
@@ -266,7 +273,6 @@ export function SideMenu() {
                           deleteThread(thread.id);
                         }}
                         onKeyDown={(e) => {
-                          // catch Enter presses even if no focusable input is present
                           if (e.key === "Enter") {
                             e.preventDefault();
                             deleteThread(thread.id);

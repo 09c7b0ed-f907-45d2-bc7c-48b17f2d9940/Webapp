@@ -2,11 +2,11 @@ import '@/app/globals.css';
 import React from "react";
 import { Poppins } from 'next/font/google';
 import SessionRoot from "@/components/SessionRoot";
-import TopBar from "@/components/ui/TopBar";
+import TopBar from "@/components/ui/menus/topBarMenu";
 import { cookies } from 'next/headers';
 import { resources } from '@/locales/config';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { SideMenu } from '@/components/ui/windows/threadHistoryWindow';
+import { SideMenu } from '@/components/ui/menus/threadHistoryMenu';
 import { Toaster } from '@/components/ui/sonner';
 import { ThreadProvider } from '@/components/ThreadContext';
 

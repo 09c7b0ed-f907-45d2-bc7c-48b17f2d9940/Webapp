@@ -164,9 +164,9 @@ export default function AlternateHistoryWindow() {
                                 "cursor-pointer transition-all duration-300 w-full h-full",
                                 isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
                                 )}
-                                style={{ height: "100%",  display: "flex", alignItems: "center", justifyContent: "center" }}
+                                style={{ height: "100%", width: "15rem",  display: "flex", alignItems: "center", justifyContent: "center" }}
                             >   
-                                <div className="w-60 h-full flex grow-1 flex-col justify-center border ">
+                                <div className="w-60 h-full flex grow-1 flex-col justify-center border hover:bg-black/5">
                                     <div className="p-4 text-sm flex flex-1 flex-col justify-center h-full">
                                         <div className="font-semibold truncate">{(item as any).metadata?.title ?? ''}</div>
                                         <div className="text-xs text-muted-foreground truncate">
