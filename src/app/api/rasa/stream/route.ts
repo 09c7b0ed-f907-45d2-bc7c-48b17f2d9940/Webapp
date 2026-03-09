@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { addSubscriberForSender } from "@/lib/sseBus";
+import { putUserAccessToken } from "@/lib/userTokenVault";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,11 +9,18 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const token = await getToken({ req });
 
-  if (!token?.accessToken) {
+  if (!token?.accessToken || !token?.sub) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const senderId = String(token.accessToken);
+  const senderId = String(token.sub);
+  putUserAccessToken({
+    sub: senderId,
+    accessToken: String(token.accessToken),
+    accessTokenExpiresAt:
+      typeof token.accessTokenExpires === "number" ? token.accessTokenExpires : undefined,
+  });
+
   const encoder = new TextEncoder();
   const clientSignal: AbortSignal | undefined = (req as unknown as { signal?: AbortSignal }).signal;
 
