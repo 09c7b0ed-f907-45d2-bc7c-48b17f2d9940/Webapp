@@ -33,6 +33,7 @@ export default function ChatWindow() {
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isWaitingForBot, setIsWaitingForBot] = useState(false);
   const language = useSettingsStore((s) => s.language);
   const { t } = useTranslation('common');
 
@@ -54,6 +55,7 @@ export default function ChatWindow() {
         : null;
 
     if (progressText) {
+      setIsWaitingForBot(true);
       // Show or update a single temporary progress bubble.
       setMessages((prev) => {
         const base = prev.filter((m) => m.kind !== "progress");
@@ -71,6 +73,7 @@ export default function ChatWindow() {
     }
 
     setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
+    setIsWaitingForBot(false);
     applyVisualizationFromCustom(custom);
   };
 
@@ -83,6 +86,8 @@ export default function ChatWindow() {
     }
 
     if (typeof obj.text === "string" && obj.text.length > 0) {
+      setIsWaitingForBot(false);
+      setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
       const botMsg: Message = {
         id: crypto.randomUUID(),
         sender: "other",
@@ -203,6 +208,8 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
 }
 
   const sendMessage = async (msg: string) => {
+    setIsWaitingForBot(true);
+
     const userMsg: Message = {
       id: crypto.randomUUID(),
       sender: "user",
@@ -255,6 +262,7 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
       } else {
         const data = await res.json();
         if (data.reply !== "") {
+          setIsWaitingForBot(false);
           const botMsg: Message = {
             id: crypto.randomUUID(),
             sender: "other",
@@ -268,6 +276,7 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
         applyVisualizationFromCustom(data.custom);
       }
     } catch (err) {
+      setIsWaitingForBot(false);
       console.error("/api/rasa error:", err);
       const errorMsg: Message = {
         id: crypto.randomUUID(),
@@ -307,7 +316,7 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
          ) : (
           <ChatMessageList  messages={messages} />
         )}
-        <ChatInput onSubmit={sendMessage} disabled={false} />
+        <ChatInput onSubmit={sendMessage} loading={isWaitingForBot} />
       </div>
     </div>
   );
