@@ -1,6 +1,7 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { getRasaUrlForRequest } from "@/lib/rasaConfig";
+import { putUserAccessToken } from "@/lib/userTokenVault";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,9 +10,17 @@ export const maxDuration = 600;
 export async function POST(req: NextRequest) {
   const token = await getToken({ req });
 
-  if (!token?.accessToken) {
+  if (!token?.accessToken || !token?.sub) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
+
+  const senderId = String(token.sub);
+  putUserAccessToken({
+    sub: senderId,
+    accessToken: String(token.accessToken),
+    accessTokenExpiresAt:
+      typeof token.accessTokenExpires === "number" ? token.accessTokenExpires : undefined,
+  });
 
   const { message } = await req.json();
 
@@ -40,7 +49,7 @@ export async function POST(req: NextRequest) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      sender: token.accessToken,
+      sender: senderId,
       message,
       ...(callbackUrl
         ? {

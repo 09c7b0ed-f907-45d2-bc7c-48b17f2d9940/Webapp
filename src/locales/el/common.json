@@ -20,7 +20,7 @@
   "topbar.theme.magenta": "Ματζέντα",
   "topbar.theme.blue": "Μπλε",
   "topbar.theme.yellow": "Κίτρινο",
-  "threadsw.delete.title": "Διαγραφή Νήματος:",
+  "threads.delete.title": "Διαγραφή Νήματος:",
   "threads.delete.description": "Είστε βέβαιοι ότι θέλετε να διαγράψετε αυτό το νήμα; Η διαγραφή είναι μόνιμη",
   "threads.dialog.cancel": "Ακύρωση",
   "threads.dialog.delete": "Διαγραφή",
