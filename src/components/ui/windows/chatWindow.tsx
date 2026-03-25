@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChatInput } from "@/components/ui/chat-input";
 import ChatMessageList from "@/components/ui/chat-message-list";
 import { useChatStore } from "@/store/useChatStore";
@@ -25,9 +25,15 @@ type Message = {
 export default function ChatWindow() {
 
   const { currentThreadId } = useThread();
+  const currentThreadIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    currentThreadIdRef.current = currentThreadId;
+  }, [currentThreadId]);
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isWaitingForBot, setIsWaitingForBot] = useState(false);
   const language = useSettingsStore((s) => s.language);
   const { t } = useTranslation('common');
 
@@ -49,6 +55,7 @@ export default function ChatWindow() {
         : null;
 
     if (progressText) {
+      setIsWaitingForBot(true);
       // Show or update a single temporary progress bubble.
       setMessages((prev) => {
         const base = prev.filter((m) => m.kind !== "progress");
@@ -66,7 +73,35 @@ export default function ChatWindow() {
     }
 
     setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
+    setIsWaitingForBot(false);
     applyVisualizationFromCustom(custom);
+  };
+
+  const handleIncomingPayload = (payload: unknown) => {
+    const obj = payload as { text?: unknown; custom?: unknown; type?: unknown } | null;
+    if (!obj || typeof obj !== "object") return;
+
+    if (obj.type === "connected") {
+      return;
+    }
+
+    if (typeof obj.text === "string" && obj.text.length > 0) {
+      setIsWaitingForBot(false);
+      setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
+      const botMsg: Message = {
+        id: crypto.randomUUID(),
+        sender: "other",
+        content: obj.text,
+      };
+      setMessages((prev) => [...prev, botMsg]);
+      postMessage(botMsg).catch(err => {
+        console.error("Failed to store incoming message to thread:", err);
+      });
+    }
+
+    if (obj.custom) {
+      handleCustomPayload(obj.custom);
+    }
   };
 
   function mapUiMessageToApi(msg: Message) {
@@ -135,26 +170,7 @@ export default function ChatWindow() {
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data ?? "null");
-        if (!data || typeof data !== "object") return;
-
-        if (data.type === "long-task-result") {
-          if (typeof data.text === "string" && data.text.length > 0) {
-            const botMsg: Message = {
-              id: crypto.randomUUID(),
-              sender: "other",
-              content: data.text,
-            };
-            setMessages((prev) => [...prev, botMsg]);
-            // Store bot response in thread history
-            postMessage(botMsg).catch(err => {
-              console.error("Failed to store SSE message to thread:", err);
-            });
-          }
-          const custom = (data as any).custom;
-          if (custom) {
-            handleCustomPayload(custom);
-          }
-        }
+        handleIncomingPayload(data);
       } catch (err) {
         console.error("SSE message parse error:", err);
       }
@@ -169,8 +185,13 @@ export default function ChatWindow() {
     };
   }, []);
 
-async function postMessage(msg: Message) {
-  const res = await fetch(`/api/cva/threads/${currentThreadId}/messages`, {
+async function postMessage(msg: Message, threadId: number | null = currentThreadIdRef.current) {
+  if (!threadId) {
+    console.warn("Skipping message persistence: no active thread id");
+    return;
+  }
+
+  const res = await fetch(`/api/cva/threads/${threadId}/messages`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -187,6 +208,8 @@ async function postMessage(msg: Message) {
 }
 
   const sendMessage = async (msg: string) => {
+    setIsWaitingForBot(true);
+
     const userMsg: Message = {
       id: crypto.randomUUID(),
       sender: "user",
@@ -217,9 +240,6 @@ async function postMessage(msg: Message) {
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         let buf = "";
-        let hasAnyText = false;
-        let lastBotMsgId: string | null = null;
-        let lastBotMsg: Message | null = null;
 
         if (reader) {
           while (true) {
@@ -232,37 +252,17 @@ async function postMessage(msg: Message) {
               if (!line.trim()) continue;
               try {
                 const obj = JSON.parse(line);
-                if (typeof obj.text === "string" && obj.text.length > 0) {
-                  hasAnyText = true;
-                  if (!lastBotMsgId) {
-                    lastBotMsgId = crypto.randomUUID();
-                    const newMsg: Message = { id: lastBotMsgId, sender: "other", content: obj.text };
-                    lastBotMsg = newMsg;
-                    setMessages((prev) => [...prev, newMsg]);
-                  } else {
-                    const id = lastBotMsgId;
-                    const updatedContent: string = lastBotMsg!.content ? `${lastBotMsg!.content}\n${obj.text}` : obj.text;
-                    lastBotMsg = { ...lastBotMsg!, content: updatedContent };
-                    setMessages((prev) => prev.map(m => m.id === id ? lastBotMsg! : m));
-                  }
-                }
-                if (obj.custom) {
-                  handleCustomPayload(obj.custom);
-                }
+                handleIncomingPayload(obj);
               } catch (e) {
                 console.warn("NDJSON parse error:", e);
               }
             }
           }
         }
-        if (hasAnyText && lastBotMsg) {
-          postMessage(lastBotMsg).catch(err => {
-            console.error("Failed to store streaming message to thread:", err);
-          });
-        }
       } else {
         const data = await res.json();
         if (data.reply !== "") {
+          setIsWaitingForBot(false);
           const botMsg: Message = {
             id: crypto.randomUUID(),
             sender: "other",
@@ -276,6 +276,7 @@ async function postMessage(msg: Message) {
         applyVisualizationFromCustom(data.custom);
       }
     } catch (err) {
+      setIsWaitingForBot(false);
       console.error("/api/rasa error:", err);
       const errorMsg: Message = {
         id: crypto.randomUUID(),
@@ -315,7 +316,7 @@ async function postMessage(msg: Message) {
          ) : (
           <ChatMessageList  messages={messages} />
         )}
-        <ChatInput onSubmit={sendMessage} disabled={false} />
+        <ChatInput onSubmit={sendMessage} loading={isWaitingForBot} />
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ interface ChatInputProps {
   onSubmit: (message: string) => Promise<void> | void
   placeholder?: string
   disabled?: boolean
+  loading?: boolean
   className?: string
 }
 
@@ -20,12 +21,14 @@ export function ChatInput({
   onSubmit,
   placeholder,
   disabled = false,
+  loading = false,
   className = "",
 }: ChatInputProps) {
   const [message, setMessage] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const { t } = useTranslation('common')
+  const isBusy = isLoading || loading
 
   const computedPlaceholder = placeholder ?? t('chat.placeholder')
 
@@ -43,7 +46,7 @@ export function ChatInput({
 
   const handleSubmit = async () => {
     const trimmed = message.trim()
-    if (!trimmed || isLoading || disabled) return
+    if (!trimmed || isBusy || disabled) return
 
     setIsLoading(true)
     try {
@@ -76,19 +79,19 @@ export function ChatInput({
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
-        disabled={disabled || isLoading}
+        disabled={disabled || isBusy}
         rows={1}
         className="flex-1 min-h-10 resize-none transition-all duration-100 ease-in-out order-1 "
       />
       <Button
         onClick={handleSubmit}
-        disabled={isLoading || disabled || !message.trim()}
+        disabled={isBusy || disabled || !message.trim()}
         size="icon"
         aria-label={t('chat.send')}
         title={t('chat.send')}
         className="rounded-full flex-shrink-0"
       >
-        {isLoading ? <Loader2 className="animate-spin size-6" /> : <SendIcon className="fill-white size-7 translate-x-0.5" />}
+        {isBusy ? <Loader2 className="animate-spin size-6" /> : <SendIcon className="fill-white size-7 translate-x-0.5" />}
       </Button>
     </div>
   )

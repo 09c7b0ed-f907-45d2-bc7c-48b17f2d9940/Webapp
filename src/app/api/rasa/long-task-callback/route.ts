@@ -45,12 +45,7 @@ export async function POST(req: NextRequest) {
   }
 
   for (const msg of messages) {
-    // Push each message as a separate SSE event to this sender.
-    publishToSender(senderId, {
-      type: "long-task-result",
-      senderId,
-      ...msg,
-    });
+    publishToSender(senderId, msg);
   }
 
   return NextResponse.json({ ok: true, senderId, messages: messages.length });
