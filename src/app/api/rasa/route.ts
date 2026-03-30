@@ -2,6 +2,8 @@ import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { getRasaUrlForRequest } from "@/lib/rasaConfig";
 import { putUserAccessToken } from "@/lib/userTokenVault";
+import { buildRasaSenderId } from "@/lib/rasaSender";
+import { touchThreadForUser } from "@/lib/threadRegistryStore";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,29 +16,51 @@ export async function POST(req: NextRequest) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
-  const senderId = String(token.sub);
-  putUserAccessToken({
-    sub: senderId,
+  const userSub = String(token.sub);
+  const body = await req.json();
+  const message = typeof body?.message === "string" ? body.message : "";
+  const rawThreadId = body?.threadId;
+  const threadId = typeof rawThreadId === "number" && Number.isFinite(rawThreadId) ? rawThreadId : null;
+  const senderId = buildRasaSenderId(userSub, threadId);
+
+  if (typeof threadId === "number") {
+    await touchThreadForUser(userSub, threadId);
+  }
+
+  const tokenPayload = {
     accessToken: String(token.accessToken),
     accessTokenExpiresAt:
       typeof token.accessTokenExpires === "number" ? token.accessTokenExpires : undefined,
+  };
+
+  putUserAccessToken({
+    sub: userSub,
+    ...tokenPayload,
   });
 
-  const { message } = await req.json();
-
-  const baseCallback = process.env.CALLBACK_BASE_URL;
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-  const proto = req.headers.get("x-forwarded-proto") || "https";
-  const callbackUrl = baseCallback
-    ? `${baseCallback.replace(/\/$/, "")}/api/rasa/long-task-callback`
-    : host
-      ? `${proto}://${host}/api/rasa/long-task-callback`
-      : null;
+  if (senderId !== userSub) {
+    putUserAccessToken({
+      sub: senderId,
+      ...tokenPayload,
+    });
+  }
 
   const apiUrl = getRasaUrlForRequest(req.headers, new Map(req.cookies.getAll().map(c => [c.name, c.value])));
   if (!apiUrl) {
     return new NextResponse("Rasa not configured", { status: 500 });
   }
+
+  const baseCallback = process.env.CALLBACK_BASE_URL;
+  const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const proto = req.headers.get("x-forwarded-proto") || "https";
+  const callbackBase = baseCallback
+    ? `${baseCallback.replace(/\/$/, "")}/api/rasa/long-task-callback`
+    : host
+      ? `${proto}://${host}/api/rasa/long-task-callback`
+      : null;
+  const callbackUrl = callbackBase
+    ? `${callbackBase}?rasaUrl=${encodeURIComponent(apiUrl)}&senderId=${encodeURIComponent(senderId)}`
+    : null;
 
   const controller = new AbortController();
   const clientSignal: AbortSignal | undefined = (req as unknown as { signal?: AbortSignal }).signal;

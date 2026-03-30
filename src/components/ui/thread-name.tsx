@@ -8,7 +8,7 @@ export function ThreadName() {
     async function GetCurrentThreadName() {
         if (!currentThreadId) return "No Thread Selected";
         try {
-            const res = await fetch(`/api/cva/threads`);
+        const res = await fetch(`/api/threads`);
             if (!res.ok) throw new Error("Failed to fetch thread name");
             const data = await res.json();
             const thread = (data.results || []).find((t: any) => t.id === currentThreadId);
