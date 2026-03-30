@@ -1,27 +1,42 @@
 "use client";
 import { SessionProvider, useSession, signIn } from "next-auth/react";
 import React, { useEffect } from "react";
+import { toast } from "sonner";
+
+const SHOW_DEV_AUTH_TOASTS = process.env.NODE_ENV === "development";
 
 function SessionWatcher() {
   const { data: session, status } = useSession();
+  const lastRefreshRef = React.useRef<number | null>(null);
 
   useEffect(() => {
-    if (session) {
-      if (session.accessTokenExpires) {
-        const secondsLeft = Math.floor((session.accessTokenExpires - Date.now()) / 1000);
-        if (secondsLeft <= 0) {
-          signIn();
-        } else {
-          const timer = setTimeout(() => {
-            signIn();
-          }, secondsLeft * 1000);
-          return () => clearTimeout(timer);
-        }
-      }
-    } else if (status === "unauthenticated") {
-      signIn();
+    if (status === "unauthenticated" || session?.error === "RefreshAccessTokenError") {
+      signIn("keycloak", { callbackUrl: window.location.href });
     }
-  }, [session, status]);
+  }, [session?.error, status]);
+
+  useEffect(() => {
+    if (!SHOW_DEV_AUTH_TOASTS) return;
+
+    const refreshedAt =
+      typeof session?.accessTokenRefreshedAt === "number"
+        ? session.accessTokenRefreshedAt
+        : null;
+    if (!refreshedAt) return;
+
+    if (lastRefreshRef.current === null) {
+      lastRefreshRef.current = refreshedAt;
+      return;
+    }
+
+    if (refreshedAt > lastRefreshRef.current) {
+      toast("Access token refreshed", {
+        description: `at ${new Date(refreshedAt).toLocaleTimeString()}`,
+      });
+    }
+
+    lastRefreshRef.current = refreshedAt;
+  }, [session?.accessTokenRefreshedAt]);
 
   return null;
 }
@@ -50,7 +65,7 @@ function ThemeConsoleCommands() {
 
 export default function SessionRoot({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider refetchInterval={30} refetchOnWindowFocus>
       <SessionWatcher />
       <ThemeConsoleCommands />
       {children}

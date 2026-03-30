@@ -3,7 +3,7 @@ import { createContext, use, useContext, useState } from "react";
 
 type ThreadContextType = {
   currentThreadId: number | null;
-  setCurrentThreadId: (id: number) => void;
+  setCurrentThreadId: (id: number | null) => void;
 };
 
 const ThreadContext = createContext<ThreadContextType | undefined>(undefined);
