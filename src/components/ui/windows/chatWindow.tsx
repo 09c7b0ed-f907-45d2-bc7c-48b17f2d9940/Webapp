@@ -19,6 +19,10 @@ type Message = {
   sender: "user" | "other";
   content: string;
   kind?: "normal" | "progress";
+  buttons?: Array<{
+    title: string;
+    payload: string;
+  }>;
 };
 
 
@@ -78,7 +82,7 @@ export default function ChatWindow() {
   };
 
   const handleIncomingPayload = (payload: unknown) => {
-    const obj = payload as { text?: unknown; custom?: unknown; type?: unknown } | null;
+    const obj = payload as { text?: unknown; custom?: unknown; type?: unknown; buttons?: unknown } | null;
     if (!obj || typeof obj !== "object") return;
 
     if (obj.type === "connected") {
@@ -93,6 +97,24 @@ export default function ChatWindow() {
         sender: "other",
         content: obj.text,
       };
+
+      // Add buttons if they exist and are in the correct format
+      if (Array.isArray(obj.buttons)) {
+        const buttons = obj.buttons.filter(
+          (btn: any) =>
+            btn && typeof btn === "object" &&
+            typeof btn.title === "string" &&
+            typeof btn.payload === "string"
+        ).map((btn: any) => ({
+          title: btn.title,
+          payload: btn.payload,
+        }));
+        
+        if (buttons.length > 0) {
+          botMsg.buttons = buttons;
+        }
+      }
+
       setMessages((prev) => [...prev, botMsg]);
       postMessage(botMsg).catch(err => {
         console.error("Failed to store incoming message to thread:", err);
@@ -102,6 +124,11 @@ export default function ChatWindow() {
     if (obj.custom) {
       handleCustomPayload(obj.custom);
     }
+  };
+
+  const handleButtonClick = async (buttonPayload: string) => {
+    // Send a formatted message with the button payload
+    await sendMessage(`Generate a Graph of my Hospital's ${buttonPayload}`);
   };
 
   function mapUiMessageToApi(msg: Message) {
@@ -216,7 +243,14 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
       content: msg,
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages((prev) => {
+      // Remove buttons from all messages when a new message is sent
+      const messagesWithoutButtons = prev.map((m) => {
+        const { buttons, ...rest } = m;
+        return rest;
+      });
+      return [...messagesWithoutButtons, userMsg];
+    });
     //Store user message in thread history
     postMessage(userMsg).catch(err => {
       console.error("Failed to post message to thread:", err);
@@ -314,7 +348,7 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
             </div>
           </div>
          ) : (
-          <ChatMessageList  messages={messages} />
+          <ChatMessageList  messages={messages} onButtonClick={handleButtonClick} />
         )}
         <ChatInput onSubmit={sendMessage} loading={isWaitingForBot} />
       </div>

@@ -5,6 +5,11 @@ interface ChatBubbleProps {
   sender: "me" | "other";
   isTyping?: boolean;
   isProgress?: boolean;
+  buttons?: Array<{
+    title: string;
+    payload: string;
+  }>;
+  onButtonClick?: (payload: string) => void;
 }
 
 export default function ChatBubble({
@@ -12,6 +17,8 @@ export default function ChatBubble({
   sender,
   isTyping = false,
   isProgress = false,
+  buttons,
+  onButtonClick,
 }: ChatBubbleProps) {
   const isMe = sender === "me";
 
@@ -35,6 +42,19 @@ export default function ChatBubble({
           </div>
         ) : (
           <p className="max-w-fit text-sm whitespace-pre-wrap break-words hyphens-auto" style={{ overflowWrap: "anywhere" }}>{message}</p>
+        )}
+        {buttons && buttons.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {buttons.map((btn, idx) => (
+              <button
+                key={idx}
+                onClick={() => onButtonClick?.(btn.payload)}
+                className="px-3 py-1 text-xs font-medium rounded-full border border-current opacity-80 hover:opacity-100 transition-opacity"
+              >
+                {btn.title}
+              </button>
+            ))}
+          </div>
         )}
       </div>
     </div>

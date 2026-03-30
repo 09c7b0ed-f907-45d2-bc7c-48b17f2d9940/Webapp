@@ -9,13 +9,18 @@ type Message = {
   sender: "user" | "other";
   content: string;
   kind?: "normal" | "progress";
+  buttons?: Array<{
+    title: string;
+    payload: string;
+  }>;
 };
 
 type Props = {
   messages: Message[];
+  onButtonClick?: (payload: string) => void;
 };
 
-export default function ChatMessageList({ messages }: Props) {
+export default function ChatMessageList({ messages, onButtonClick }: Props) {
   const endRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -32,6 +37,8 @@ export default function ChatMessageList({ messages }: Props) {
               message={msg.content}
               sender={msg.sender === "user" ? "me" : "other"}
               isProgress={msg.kind === "progress"}
+              buttons={msg.buttons}
+              onButtonClick={onButtonClick}
             />
           ))}
           <div ref={endRef} />
