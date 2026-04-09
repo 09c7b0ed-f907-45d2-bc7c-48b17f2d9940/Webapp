@@ -9,69 +9,66 @@ import type { VisualizationResponseDTO } from "@/models/dto/response";
 import clsx from "clsx";
 import { useTranslation } from 'react-i18next';
 import '@/i18n';
+import { ChartThumbnail } from "@/components/ui/chart-thumbnail";
+import { useThread } from "@/components/ThreadContext";
 
 type HorizontalScrollListProps = {
   children: ReactNode
 }
 
 export default function AlternateHistoryWindow() {
-  const history = useChatStore((s) => s.history);
+  const { currentThreadId } = useThread();
   const setVisualization = useChatStore((s) => s.setVisualization);
   const setSelectedChartIndex = useChatStore((s) => s.setSelectedChartIndex);
   const selectedChartIndex = useChatStore((s) => s.selectedChartIndex);
   const visualization = useChatStore((s) => s.visualization);
   const { t } = useTranslation('common');
 
-  // Debug fallback data for visual testing when `history` is empty
-  // const debugHistory: VisualizationResponseDTO[] = [
-  //   {
-  //     charts: [
-  //       { metadata: { title: 'Sample Bar Chart' }, type: 'BAR' } as any,
-  //     ],
-  //   } as any,
-  //   {
-  //     charts: [
-  //       { metadata: { title: 'Sample Line Chart' }, type: 'LINE' } as any,
-  //     ],
-  //   } as any,
-  //   {
-  //     charts: [
-  //       { metadata: { title: 'Sample Pie Chart' }, type: 'PIE' } as any,
-  //     ],
-  //   } as any,
-  //   {
-  //     charts: [
-  //       { metadata: { title: 'Sample Box Chart' }, type: 'BOX' } as any,
-  //     ],
-  //   } as any,
-  //   {
-  //     charts: [
-  //       { metadata: { title: 'Sample Bar Chart' }, type: 'BAR' } as any,
-  //     ],
-  //   } as any,
-  //   {
-  //     charts: [
-  //       { metadata: { title: 'Sample Line Chart' }, type: 'LINE' } as any,
-  //     ],
-  //   } as any,
-  //   {
-  //     charts: [
-  //       { metadata: { title: 'Sample Pie Chart' }, type: 'PIE' } as any,
-  //     ],
-  //   } as any,
-  //   {
-  //     charts: [
-  //       { metadata: { title: 'Sample Box Chart' }, type: 'BOX' } as any,
-  //     ],
-  //   } as any,
-  // ];
-
-  // const displayHistory = (history && history.length > 0) ? history : debugHistory;
-
-  const displayHistory = history;
-  
+  const [displayHistory, setDisplayHistory] = useState<VisualizationResponseDTO[]>([]);
   const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // Fetch visualization history from API
+  useEffect(() => {
+    if (!currentThreadId) {
+      setDisplayHistory([]);
+      return;
+    }
+
+    const fetchVisualizationHistory = async () => {
+      try {
+        const res = await fetch(`/api/rasa/history?threadId=${currentThreadId}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const visualizations: VisualizationResponseDTO[] = [];
+        
+        (data.history || []).forEach((item: any) => {
+          if (item.custom && typeof item.custom === "object") {
+            const viz = item.custom as VisualizationResponseDTO;
+            if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
+              visualizations.push(viz);
+            }
+          }
+        });
+
+        setDisplayHistory(visualizations);
+      } catch (err) {
+        console.error("Failed to fetch visualization history:", err);
+      }
+    };
+
+    fetchVisualizationHistory();
+  }, [currentThreadId]);
+
+  // Clear refs when display history changes
+  useEffect(() => {
+    chartRefs.current = [];
+  }, [displayHistory]);
+
+  // Scroll selected chart into view
   useEffect(() => {
     if (selectedChartIndex !== null && visualization) {
       const historyIndex = displayHistory.findIndex((h) => h === visualization);
@@ -161,13 +158,17 @@ export default function AlternateHistoryWindow() {
                                 }}
                                 onClick={() => handleClick(viz, chartIndex)}
                                 className={clsx(
-                                "cursor-pointer transition-all duration-300 w-full h-full",
+                                "cursor-pointer transition-all duration-300 flex-shrink-0 w-60 h-full min-h-0 flex items-center justify-center",
                                 isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
                                 )}
-                                style={{ height: "100%", width: "15rem",  display: "flex", alignItems: "center", justifyContent: "center" }}
                             >   
-                                <div className="w-60 h-full flex grow-1 flex-col justify-center border hover:bg-black/5">
-                                    <div className="p-4 text-sm flex flex-1 flex-col justify-center h-full">
+                                <div className="w-60 h-full flex flex-col justify-between border hover:bg-black/5">
+                                    <div className="w-full h-32 min-w-0 flex items-center justify-center overflow-hidden">
+                                        <div className="w-4/5 h-4/5">
+                                            <ChartThumbnail chart={item} />
+                                        </div>
+                                    </div>
+                                    <div className="p-4 text-sm flex flex-col flex-shrink-0 flex-grow-0">
                                         <div className="font-semibold truncate">{(item as any).metadata?.title ?? ''}</div>
                                         <div className="text-xs text-muted-foreground truncate">
                                             {item.type === "BOX" && t('visualization.type.box')}
