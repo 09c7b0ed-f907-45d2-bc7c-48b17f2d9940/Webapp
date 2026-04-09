@@ -84,7 +84,7 @@ export default function TopBar() {
 			id="sym:TopBar"
 		>
 			<div className="flex items-center gap-2 h-10">
-				<Image src="/logo.png" alt={t('topbar.logoAlt')} width={629} height={179} style={{ height: "200%", width: "auto" }} />
+				<Image src="/RESQ+_Logo_Full_Colors_RGB.svg" alt={t('topbar.logoAlt')} width={629} height={179} style={{ height: "200%", width: "auto" }} />
 			</div>
 			<div className="flex items-center gap-4 ">
 				{/* Language selector */}

@@ -25,6 +25,6 @@ export function ThreadName() {
   }, [currentThreadId]);
 
   return (
-    <span className="mx-auto flex w-full justify-center font-bold text-primary">{name}</span>
+    <span className="font-bold text-white truncate min-w-0">{name}</span>
   );
 }
