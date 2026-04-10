@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import '@/i18n';
 import { ChartThumbnail } from "@/components/ui/chart-thumbnail";
 import { useThread } from "@/components/ThreadContext";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "../tooltip";
 
 type HorizontalScrollListProps = {
   children: ReactNode
@@ -68,6 +69,17 @@ export default function AlternateHistoryWindow() {
     chartRefs.current = [];
   }, [displayHistory]);
 
+  // Auto-select first chart when history is updated
+  useEffect(() => {
+    if (displayHistory.length > 0) {
+      const firstViz = displayHistory[0];
+      if (firstViz?.charts && firstViz.charts.length > 0) {
+        setVisualization(firstViz);
+        setSelectedChartIndex(0);
+      }
+    }
+  }, [displayHistory, setVisualization, setSelectedChartIndex]);
+
   // Scroll selected chart into view
   useEffect(() => {
     if (selectedChartIndex !== null && visualization) {
@@ -87,107 +99,120 @@ export default function AlternateHistoryWindow() {
 
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [cardsPerView, setCardsPerView] = useState(1);
+  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    const updateCardsPerView = () => {
+    const updateDimensions = () => {
       if (containerRef.current) {
         const { width, height } = containerRef.current.getBoundingClientRect();
-        if (height > 0) {
-          setCardsPerView(Math.max(1, Math.floor(width / height)));
-        }
+        setContainerDimensions({ width, height });
       }
     };
 
     let resizeObserver: ResizeObserver | null = null;
     if (containerRef.current) {
-      resizeObserver = new ResizeObserver(updateCardsPerView);
+      resizeObserver = new ResizeObserver(updateDimensions);
       resizeObserver.observe(containerRef.current);
     }
-    updateCardsPerView();
+    updateDimensions();
 
-    window.addEventListener("resize", updateCardsPerView);
+    window.addEventListener("resize", updateDimensions);
 
     return () => {
-      window.removeEventListener("resize", updateCardsPerView);
+      window.removeEventListener("resize", updateDimensions);
       if (resizeObserver && containerRef.current) {
         resizeObserver.unobserve(containerRef.current);
       }
     };
   }, []);
+
+  // Calculate card dimensions based on container height
+  const cardHeight = Math.max(100, containerDimensions.height - 60); // 60px for padding and title
+  const cardWidth = Math.max(180, cardHeight * 0.75); // Maintain 4:3 aspect ratio, minimum 180px for readability
   
   const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
     <div ref={containerRef} className="w-full h-full flex flex-col p-4">
-        <p className=" font-semibold text-primary">{t('history.title')}</p>
-        <ScrollArea
+      <p className=" font-semibold text-primary">{t('history.title')}</p>
+      <ScrollArea
         ref={scrollRef}
         className="w-full flex-1"
         onWheel={(e) => {
-            const viewport = scrollRef.current?.querySelector(
-            "[data-radix-scroll-area-viewport]"
-            ) as HTMLDivElement | null;
+          const viewport = scrollRef.current?.querySelector(
+          "[data-radix-scroll-area-viewport]"
+          ) as HTMLDivElement | null;
 
-            if (!viewport) return;
+          if (!viewport) return;
 
-            if (viewport.scrollWidth > viewport.clientWidth) {
+          if (viewport.scrollWidth > viewport.clientWidth) {
             e.preventDefault();
             viewport.scrollLeft += e.deltaY;
-            }
+          }
         }}
-        >   
-            
-            <div ref={scrollRef}className="flex flex-1 flex-row gap-2 p-4 ">
-                {displayHistory.map((viz, historyIndex) => {
-                    const charts = (viz.charts ?? []) as ChartDTO[];
-                    return charts.map((item, chartIndex) => {
-                        const refKey = `${historyIndex}-${chartIndex}`;
-                        const isSelected =
-                            visualization === viz && selectedChartIndex === chartIndex;
-
-                        return (
-
-                            <div
-                                key={`${historyIndex}-${chartIndex}`}  
-                                ref={(el) => {
-                                if (el) {
-                                    el.dataset.refkey = refKey;
-                                    chartRefs.current.push(el);
-                                }
-                                }}
-                                onClick={() => handleClick(viz, chartIndex)}
-                                className={clsx(
-                                "cursor-pointer transition-all duration-300 flex-shrink-0 w-60 h-full min-h-0 flex items-center justify-center",
-                                isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
-                                )}
-                            >   
-                                <div className="w-60 h-full flex flex-col justify-between border hover:bg-black/5">
-                                    <div className="w-full h-32 min-w-0 flex items-center justify-center overflow-hidden">
-                                        <div className="w-4/5 h-4/5">
-                                            <ChartThumbnail chart={item} />
-                                        </div>
-                                    </div>
-                                    <div className="p-4 text-sm flex flex-col flex-shrink-0 flex-grow-0">
-                                        <div className="font-semibold truncate">{(item as any).metadata?.title ?? ''}</div>
-                                        <div className="text-xs text-muted-foreground truncate">
-                                            {item.type === "BOX" && t('visualization.type.box')}
-                                            {item.type === "LINE" && t('visualization.type.line')}
-                                            {item.type === "AREA" && t('visualization.type.area')}
-                                            {item.type === "BAR" && t('visualization.type.bar')}
-                                            {item.type === "PIE" && t('visualization.type.pie')}
-                                            {item.type === "RADAR" && t('visualization.type.radar')}
-                                            {item.type !== "BOX" && item.type !== "LINE" && item.type !== "AREA" && item.type !== "BAR" && item.type !== "PIE" && item.type !== "RADAR" && (<>{item.type}</>)}
-                                        </div>
-                                    </div>
+      >
+        <div ref={scrollRef}className="flex flex-1 flex-row gap-2 p-2">
+          <TooltipProvider>
+            {displayHistory.map((viz, historyIndex) => {
+              const charts = (viz.charts ?? []) as ChartDTO[];
+                return charts.map((item, chartIndex) => {
+                  const refKey = `${historyIndex}-${chartIndex}`;
+                  const isSelected = visualization === viz && selectedChartIndex === chartIndex;
+                    return (
+                      <Tooltip key={`${historyIndex}-${chartIndex}`}>
+                        <TooltipTrigger asChild>
+                          <div
+                            ref={(el) => {
+                              if (el) {
+                                  el.dataset.refkey = refKey;
+                                  chartRefs.current.push(el);
+                              }
+                            }}
+                            onClick={() => handleClick(viz, chartIndex)}
+                            style={{
+                              width: `${cardWidth}px`,
+                              height: `${cardHeight}px`,
+                            }}
+                            className={clsx(
+                              "cursor-pointer transition-all duration-300 flex-shrink-0 min-h-0 flex items-center justify-center ",
+                              isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
+                            )}
+                          >
+                            <div className="w-full h-full flex flex-col justify-between border hover:bg-black/5">
+                              <div className="w-full flex-1 min-w-0 flex items-center justify-center overflow-hidden">
+                                <div className="w-4/5 h-4/5">
+                                  <ChartThumbnail chart={item} />
                                 </div>
+                              </div>
+                              <div className="p-4 text-sm flex flex-col flex-shrink-0 flex-grow-0">
+                                <div className="font-semibold truncate">{(item as any).metadata?.title ?? 'Untitled'}</div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {item.type === "BOX" && t('visualization.type.box')}
+                                  {item.type === "LINE" && t('visualization.type.line')}
+                                  {item.type === "AREA" && t('visualization.type.area')}
+                                  {item.type === "BAR" && t('visualization.type.bar')}
+                                  {item.type === "PIE" && t('visualization.type.pie')}
+                                  {item.type === "RADAR" && t('visualization.type.radar')}
+                                  {item.type !== "BOX" && item.type !== "LINE" && item.type !== "AREA" && item.type !== "BAR" && item.type !== "PIE" && item.type !== "RADAR" && (<>{item.type}</>)}
+                                </div>
+                              </div>
                             </div>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <div className="flex flex-col gap-1 ">
+                            <div className="font-semibold">{(item as any).metadata?.title ?? 'Untitled'}</div>
+                            <div className="text-xs">{(item as any).metadata?.description ?? 'None'}</div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
                     );
-                });
-            })}
-            </div>
-            <ScrollBar orientation="horizontal" className="w-80%" />
-        </ScrollArea>
+              });
+          })}
+          </TooltipProvider>
+        </div>
+        <ScrollBar orientation="horizontal" className="w-80%" />
+      </ScrollArea>
     </div>
   );
 }
