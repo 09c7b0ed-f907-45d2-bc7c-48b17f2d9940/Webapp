@@ -1,11 +1,28 @@
 import KeycloakProvider from "next-auth/providers/keycloak";
 import type { AuthOptions } from "next-auth";
 
+const parsedRefreshSafetyMs = Number(process.env.NEXTAUTH_ACCESS_TOKEN_REFRESH_SAFETY_MS ?? "90000");
+const ACCESS_TOKEN_REFRESH_SAFETY_MS =
+  Number.isFinite(parsedRefreshSafetyMs) && parsedRefreshSafetyMs >= 0
+    ? parsedRefreshSafetyMs
+    : 90000;
+
 declare module "next-auth" {
   interface Session {
     accessToken?: string;
     refreshToken?: string;
     accessTokenExpires?: number;
+    accessTokenRefreshedAt?: number;
+    error?: string;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    accessToken?: string;
+    refreshToken?: string;
+    accessTokenExpires?: number;
+    accessTokenRefreshedAt?: number;
     error?: string;
   }
 }
@@ -30,18 +47,25 @@ export const authOptions: AuthOptions = {
         token.accessTokenExpires = account.expires_at
           ? account.expires_at * 1000
           : Date.now() + 60 * 60 * 1000;
+        token.error = undefined;
       }
 
+      const now = Date.now();
+      const refreshWindowStart =
+        typeof token.accessTokenExpires === "number"
+          ? token.accessTokenExpires - ACCESS_TOKEN_REFRESH_SAFETY_MS
+          : undefined;
+
       if (
-        typeof token.accessTokenExpires === "number" &&
-        Date.now() < token.accessTokenExpires
+        typeof refreshWindowStart === "number" &&
+        now < refreshWindowStart
       ) {
         return token;
       }
 
       if (
-        typeof token.accessTokenExpires === "number" &&
-        Date.now() >= token.accessTokenExpires
+        typeof refreshWindowStart === "number" &&
+        now >= refreshWindowStart
       ) {
         if (token.refreshToken) {
           try {
@@ -66,6 +90,8 @@ export const authOptions: AuthOptions = {
             token.accessToken = refreshedTokens.access_token;
             token.accessTokenExpires = Date.now() + refreshedTokens.expires_in * 1000;
             token.refreshToken = refreshedTokens.refresh_token ?? token.refreshToken;
+            token.accessTokenRefreshedAt = Date.now();
+            token.error = undefined;
             return token;
           } catch (error) {
             token.error = "RefreshAccessTokenError";
@@ -83,6 +109,8 @@ export const authOptions: AuthOptions = {
       session.accessToken = typeof token.accessToken === "string" ? token.accessToken : undefined;
       session.refreshToken = typeof token.refreshToken === "string" ? token.refreshToken : undefined;
       session.accessTokenExpires = typeof token.accessTokenExpires === "number" ? token.accessTokenExpires : undefined;
+      session.accessTokenRefreshedAt =
+        typeof token.accessTokenRefreshedAt === "number" ? token.accessTokenRefreshedAt : undefined;
       if (token.error) session.error = token.error as string;
       return session;
     },

@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { SquarePen, Search, X, Pencil, Pin} from "lucide-react";
 import { ArrowLeftToLine, PanelLeftIcon } from "lucide-react"
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -51,19 +51,53 @@ export function SideMenu() {
 
   const { currentThreadId, setCurrentThreadId } = useThread();
 
-  // Placeholder functions for delete and rename - replace with actual API calls
-  const deleteThread = (id:number) => {
-    toast("Thread has been deleted! (Not Yet Implemented)");
+  const deleteThread = async (id:number) => {
+    try {
+      const res = await fetch(`/api/threads/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || "Failed to delete thread");
+      }
+
+      toast(t("threads.delete.title"));
+      const remaining = threads.filter((thread) => thread.id !== id);
+      if (currentThreadId === id) {
+        setCurrentThreadId(remaining[0]?.id ?? null);
+      }
+      await getThreads();
+    } catch (error) {
+      console.error("Failed to delete thread", error);
+      toast("Failed to delete thread");
+    }
   };
-  const renameThread = (id:number, newName:string) => {
-    toast("Thread has been renamed! (Not Yet Implemented)")
+
+  const renameThread = async (id:number, newName:string) => {
+    try {
+      const res = await fetch(`/api/threads/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.message || "Failed to rename thread");
+      }
+
+      toast("Thread has been renamed");
+      await getThreads();
+    } catch (error) {
+      console.error("Failed to rename thread", error);
+      toast("Failed to rename thread");
+    }
   };
-  ////
 
   async function getThreads() {
-    setLoading(true);
-    try {
-    const res = await fetch('/api/cva/threads', { method: 'GET' });
+  setLoading(true);
+  try {
+    const res = await fetch('/api/threads', { method: 'GET' });
 
     if (!res.ok) {
       console.error('Failed to fetch threads:', res.statusText);
@@ -72,47 +106,15 @@ export function SideMenu() {
 
     const data = await res.json();
 
-    const threads = (data.results || []);
+    const newThreads = (data.results || []);
+    if (newThreads.length === 0) {
+      await postThread(`${t('threads.name.default')}1`);
+      return;
+    }
 
-    // Fetch the last message for each thread to determine sort order
-    const threadsWithLastMessage = await Promise.all(
-      threads.map(async (thread: Thread) => {
-        try {
-          const msgRes = await fetch(`/api/cva/threads/${thread.id}/messages?limit=1&order=-createdAt`);
-          if (msgRes.ok) {
-            const msgData = await msgRes.json();
-            const messages = msgData.results || msgData;
-            const lastMessage = messages.length > 0 ? messages[0] : null;
-            return {
-              thread,
-              lastCreatedAt: lastMessage?.createdAt || '1970-01-01T00:00:00Z'
-            };
-          } else {
-            return {
-              thread,
-              lastCreatedAt: '1970-01-01T00:00:00Z'
-            };
-          }
-        } catch (err) {
-          console.error('Error fetching messages for thread', thread.id, err);
-          return {
-            thread,
-            lastCreatedAt: '1970-01-01T00:00:00Z'
-          };
-        }
-      })
-    );
-
-    // Sort threads by last message createdAt descending (newest first)
-    threadsWithLastMessage.sort((a, b) => 
-      new Date(b.lastCreatedAt).getTime() - new Date(a.lastCreatedAt).getTime()
-    );
-
-    const sortedThreads = threadsWithLastMessage.map(item => item.thread);
-
-    setThreads(sortedThreads);
-    if (currentThreadId === null && sortedThreads.length > 0) {
-      setCurrentThreadId(sortedThreads[0].id);
+    setThreads(newThreads);
+    if (currentThreadId === null && newThreads.length > 0) {
+      setCurrentThreadId(newThreads[0].id);
     }
     } catch (err) {
       console.error('Error fetching threads:', err);
@@ -122,7 +124,7 @@ export function SideMenu() {
   }
 
   async function postThread(name: string) {
-    const res = await fetch('/api/cva/threads', {
+    const res = await fetch('/api/threads', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -146,6 +148,28 @@ export function SideMenu() {
   useEffect(() => {
     setOpen(true);
     getThreads();
+  }, []);
+
+  useEffect(() => {
+    const onThreadActivity = (event: Event) => {
+      const customEvent = event as CustomEvent<{ threadId?: number }>;
+      const activeThreadId = customEvent.detail?.threadId;
+      if (typeof activeThreadId !== "number") return;
+
+      setThreads((prev) => {
+        const index = prev.findIndex((thread) => thread.id === activeThreadId);
+        if (index <= 0) return prev;
+        const next = [...prev];
+        const [thread] = next.splice(index, 1);
+        next.unshift(thread);
+        return next;
+      });
+    };
+
+    window.addEventListener("thread-activity", onThreadActivity as EventListener);
+    return () => {
+      window.removeEventListener("thread-activity", onThreadActivity as EventListener);
+    };
   }, []);
   
   return (

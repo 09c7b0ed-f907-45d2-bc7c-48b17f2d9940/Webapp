@@ -12,13 +12,26 @@ import { WaveAsset } from "../assets/wave-asset";
 import { RobotIcon } from "../icons/robot-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useThread } from "@/components/ThreadContext";
-import { toast } from "sonner";
+import { ThreadName } from "../thread-name";
 
 type Message = {
   id: string;
   sender: "user" | "other";
   content: string;
   kind?: "normal" | "progress";
+  debug?: {
+    pending?: boolean;
+    eventIndex?: number;
+    turnIndex?: number;
+    timestamp?: number;
+    source?: string;
+    intentName?: string;
+    intentConfidence?: number;
+    entities?: unknown[];
+    actionName?: string;
+    policyName?: string;
+    policyConfidence?: number;
+  };
   buttons?: Array<{
     title: string;
     payload: string;
@@ -27,19 +40,66 @@ type Message = {
 
 
 export default function ChatWindow() {
-
   const { currentThreadId } = useThread();
-  const currentThreadIdRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    currentThreadIdRef.current = currentThreadId;
-  }, [currentThreadId]);
-  
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [isWaitingForBot, setIsWaitingForBot] = useState(false);
+  const hydrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const language = useSettingsStore((s) => s.language);
   const { t } = useTranslation('common');
+
+  const hydrateFromHistory = async () => {
+    if (!currentThreadId) return;
+
+    try {
+      const res = await fetch(`/api/rasa/history?threadId=${currentThreadId}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const customPayloads: unknown[] = [];
+      const mapped = (data.history || []).flatMap((item: any) => {
+        if (!item || (item.role !== "user" && item.role !== "assistant")) return [];
+
+        if (item.custom && typeof item.custom === "object") {
+          customPayloads.push(item.custom);
+        }
+
+        if (typeof item.text !== "string") return [];
+
+        return [{
+          id: crypto.randomUUID(),
+          sender: item.role === "user" ? "user" : "other",
+          content: item.text,
+          debug: item.debug && typeof item.debug === "object" ? item.debug : undefined,
+        } as Message];
+      });
+
+      setMessages((prev) => {
+        const progress = prev.filter((m) => m.kind === "progress");
+        return progress.length > 0 ? [...mapped, ...progress] : mapped;
+      });
+      for (const customPayload of customPayloads) {
+        applyVisualizationFromCustom(customPayload);
+      }
+    } catch (err) {
+      console.error("Silent tracker hydration failed:", err);
+    }
+  };
+
+  const scheduleHydration = () => {
+    if (hydrationTimerRef.current) {
+      clearTimeout(hydrationTimerRef.current);
+    }
+
+    hydrationTimerRef.current = setTimeout(() => {
+      hydrateFromHistory().catch((err) => {
+        console.error("Failed to hydrate tracker metadata:", err);
+      });
+    }, 900);
+  };
 
   const applyVisualizationFromCustom = (custom: unknown) => {
     const viz = (custom ?? null) as VisualizationResponseDTO | null;
@@ -96,6 +156,10 @@ export default function ChatWindow() {
         id: crypto.randomUUID(),
         sender: "other",
         content: obj.text,
+        debug: {
+          pending: true,
+          source: "live-stream",
+        },
       };
 
       // Add buttons if they exist and are in the correct format
@@ -116,13 +180,20 @@ export default function ChatWindow() {
       }
 
       setMessages((prev) => [...prev, botMsg]);
-      postMessage(botMsg).catch(err => {
-        console.error("Failed to store incoming message to thread:", err);
-      });
+      scheduleHydration();
     }
 
     if (obj.custom) {
+      const customObj = obj.custom as { progress?: unknown } | null;
+      const isProgressUpdate =
+        !!customObj &&
+        typeof customObj === "object" &&
+        typeof customObj.progress === "string";
+
       handleCustomPayload(obj.custom);
+      if (!isProgressUpdate) {
+        scheduleHydration();
+      }
     }
   };
 
@@ -130,69 +201,80 @@ export default function ChatWindow() {
     // Send a formatted message with the button payload
     await sendMessage(`Generate a Graph of my Hospital's ${buttonPayload}`);
   };
-
-  function mapUiMessageToApi(msg: Message) {
-    return {
-      role: msg.sender === "user" ? "user" : "assistant",
-      // the CVA API expects `content` to be an array of content blocks
-      content: [
-        {
-          type: "text",
-          text: msg.content,
-        },
-      ],
+ useEffect(() => {
+    return () => {
+      if (hydrationTimerRef.current) {
+        clearTimeout(hydrationTimerRef.current);
+      }
     };
-  }
+  }, []);
 
- useEffect(() => { //fetch messages when thread changes
-    if (!currentThreadId) return;
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!currentThreadId) {
+      setMessages([]);
+      setLoading(false);
+      return;
+    }
 
     async function fetchMessages() {
       setLoading(true);
       try {
-        const allMessages: Message[] = [];
-        let offset = 0;
-        const limit = 100; // adjust based on API max
+        const res = await fetch(`/api/rasa/history?threadId=${currentThreadId}`, {
+          credentials: "include",
+          cache: "no-store",
+        });
+        if (!res.ok) throw new Error("Failed to fetch Rasa history");
 
-        while (true) {
-          const res = await fetch(`/api/cva/threads/${currentThreadId}/messages?limit=${limit}&offset=${offset}`);
-          if (!res.ok) throw new Error("Failed to fetch messages");
+        const data = await res.json();
+        const customPayloads: unknown[] = [];
+        const mapped = (data.history || []).flatMap((item: any) => {
+          if (!item || (item.role !== "user" && item.role !== "assistant")) return [];
 
-          const data = await res.json();
+          if (item.custom && typeof item.custom === "object") {
+            customPayloads.push(item.custom);
+          }
 
-          const mapped = (data.results || []).map((apiMsg: any) => {
-            const textContent = Array.isArray(apiMsg.content)
-              ? apiMsg.content.map((c: any) => c.text || "").join("\n")
-              : typeof apiMsg.content === "string"
-              ? apiMsg.content
-              : "";
-            return {
-              id: apiMsg.id || crypto.randomUUID(),
-              sender: apiMsg.role === "user" ? "user" : "other",
-              content: textContent,
-            } as Message;
+          if (typeof item.text !== "string") return [];
+
+          return [{
+            id: crypto.randomUUID(),
+            sender: item.role === "user" ? "user" : "other",
+            content: item.text,
+            debug: item.debug && typeof item.debug === "object" ? item.debug : undefined,
+          } as Message];
+        });
+
+        if (!cancelled) {
+          setMessages((prev) => {
+            const progress = prev.filter((m) => m.kind === "progress");
+            return progress.length > 0 ? [...mapped, ...progress] : mapped;
           });
-
-          allMessages.push(...mapped);
-
-          if ((data.results || []).length < limit) break; // no more pages
-          offset += limit;
+          for (const customPayload of customPayloads) {
+            applyVisualizationFromCustom(customPayload);
+          }
         }
-
-        setMessages(allMessages.reverse());
       } catch (err) {
         console.error(err);
       } finally {
-        // small delay to avoid flicker
-        setTimeout(() => setLoading(false), 150);
+        if (!cancelled) {
+          setTimeout(() => setLoading(false), 150);
+        }
       }
     }
 
     fetchMessages();
+
+    return () => {
+      cancelled = true;
+    };
   }, [currentThreadId]);
 
   useEffect(() => {
-    const es = new EventSource("/api/rasa/stream", { withCredentials: true });
+    if (!currentThreadId) return;
+
+    const es = new EventSource(`/api/rasa/stream?threadId=${currentThreadId}`, { withCredentials: true });
 
     es.onmessage = (event) => {
       try {
@@ -210,37 +292,29 @@ export default function ChatWindow() {
     return () => {
       es.close();
     };
-  }, []);
-
-async function postMessage(msg: Message, threadId: number | null = currentThreadIdRef.current) {
-  if (!threadId) {
-    console.warn("Skipping message persistence: no active thread id");
-    return;
-  }
-
-  const res = await fetch(`/api/cva/threads/${threadId}/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(mapUiMessageToApi(msg)),
-    credentials: "include",
-  });
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    console.error("Failed to create message:", res.status, data);
-  }
-}
+  }, [currentThreadId]);
 
   const sendMessage = async (msg: string) => {
+    if (!currentThreadId) {
+      return;
+    }
+
+    window.dispatchEvent(
+      new CustomEvent("thread-activity", {
+        detail: { threadId: currentThreadId },
+      })
+    );
+
     setIsWaitingForBot(true);
 
     const userMsg: Message = {
       id: crypto.randomUUID(),
       sender: "user",
       content: msg,
+      debug: {
+        pending: true,
+        source: "live-input",
+      },
     };
 
     setMessages((prev) => {
@@ -263,7 +337,7 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
           "Content-Type": "application/json",
           "Accept-Language": language,
         },
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify({ message: msg, threadId: currentThreadId }),
         credentials: "include",
       });
 
@@ -301,14 +375,16 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
             id: crypto.randomUUID(),
             sender: "other",
             content: data.reply,
+            debug: {
+              pending: true,
+              source: "live-response",
+            },
           };
           setMessages((prev) => [...prev, botMsg]);
-          postMessage(botMsg).catch(err => {
-            console.error("Failed to store bot response to thread:", err);
-          });
         }
         applyVisualizationFromCustom(data.custom);
       }
+      scheduleHydration();
     } catch (err) {
       setIsWaitingForBot(false);
       console.error("/api/rasa error:", err);
@@ -316,11 +392,12 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
         id: crypto.randomUUID(),
         sender: "other",
         content: t('chat.error'),
+        debug: {
+          pending: true,
+          source: "live-error",
+        },
       };
       setMessages((prev) => [...prev, errorMsg]);
-      postMessage(errorMsg).catch(err => {
-        console.error("Failed to store error message to thread:", err);
-      });
     }
   };
 
@@ -329,10 +406,11 @@ async function postMessage(msg: Message, threadId: number | null = currentThread
       <div className="gap-0 bg-transparent relative min-h-0 flex-none"  >  
         <div className="w-[101%] h-15 rounded-t-xl z-10 flex items-center justify-between px-10 bg-gradient-to-tl from-secondary to-primary">
           <div className="flex w-full gap-2 items-center h-full min-h-">
-            <p className="text-white font-semibold">{t('robot.intro')}</p><RobotIcon className="w-6 h-6 min-h-6" />
+            <ThreadName  />
+            {/* <p className="text-white font-semibold">{t('robot.intro')}</p><RobotIcon className="w-6 h-6 min-h-6" /> */}
           </div>
         </div>
-        <WaveAsset className=" absolute w-full max-h-15 min-h-10 fill-gradient-to-r from-primary to-accent align-self bg-transparent z-1 p-0" />
+        <WaveAsset className=" absolute w-full max-h-15 min-h-10 fill-gradient-to-r from-primary to-accent align-self bg-transparent z-1 p-0 pointer-events-none" />
       </div>
       <div className=" p-4 flex-1 pt-0 flex flex-col h-full min-h-0 w-full">
         {loading ? (
