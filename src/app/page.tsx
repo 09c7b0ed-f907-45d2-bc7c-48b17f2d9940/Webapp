@@ -3,12 +3,10 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/componen
 import AlternateHistoryWindow from "@/components/ui/windows/alternateHistoryWindow";
 import ChatWindow from "@/components/ui/windows/chatWindow";
 import VisualizationWindow from "@/components/ui/windows/visualizationWindow";
-import { ThreadName } from "@/components/ui/thread-name";
 
 export default function HomePage() {
   return (
     <div className="h-full w-full flex-1 p-4 pl-1 pb-10">
-      <ThreadName  />
       <ResizablePanelGroup direction="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={30} minSize={15} collapsible>
           <div className="flex-auto h-full items-center justify-center p-2 pr-1 pl-0 ">
