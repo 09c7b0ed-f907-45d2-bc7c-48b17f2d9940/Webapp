@@ -317,18 +317,7 @@ export default function ChatWindow() {
       },
     };
 
-    setMessages((prev) => {
-      // Remove buttons from all messages when a new message is sent
-      const messagesWithoutButtons = prev.map((m) => {
-        const { buttons, ...rest } = m;
-        return rest;
-      });
-      return [...messagesWithoutButtons, userMsg];
-    });
-    //Store user message in thread history
-    postMessage(userMsg).catch(err => {
-      console.error("Failed to post message to thread:", err);
-    });
+    setMessages((prev) => [...prev, userMsg]);
 
     try {
       const res = await fetch("/api/rasa", {
