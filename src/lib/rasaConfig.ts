@@ -1,4 +1,4 @@
-import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS } from '@/locales/config';
+import { LANGUAGE_LABELS } from '@/locales/config';
 
 export type RasaBot = {
   lang: string; // BCP 47 tag
@@ -58,9 +58,6 @@ export function getRasaUrlForRequest(headers: Headers, cookies: Map<string, stri
 
   const cookieLang = cookies.get('lang') ?? null;
   const headerLang = headers.get('accept-language');
-  const normCookie = normalizeLang(cookieLang);
-  const normHeader = normalizeLang(headerLang);
-
   const pref = normalizeLang(cookieLang) || normalizeLang(headerLang);
 
   let found: RasaBot | undefined;

@@ -14,7 +14,6 @@ import { useSettingsStore } from "@/store/useSettingsStore";
 import { useTranslation } from "react-i18next";
 import "@/i18n";
 import { WaveAsset } from "../assets/wave-asset";
-import { RobotIcon } from "../icons/robot-icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useThread } from "@/components/ThreadContext";
 import { ThreadName } from "../thread-name";
@@ -213,7 +212,7 @@ export default function ChatWindow() {
       addToHistory(custom);
       setSelectedChartIndex(0);
     }
-  }, []);
+  }, [emitPlanDebugMessage]);
 
   const hydrateFromHistory = useCallback(async () => {
     if (!currentThreadId) return;

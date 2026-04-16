@@ -303,10 +303,10 @@ export async function POST(req: NextRequest) {
       body: hasBody ? JSON.stringify(request.body ?? {}) : undefined,
       signal: controller.signal,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     clearTimeout(timeoutId);
 
-    if (err?.name === "AbortError") {
+    if (err instanceof Error && err.name === "AbortError") {
       console.error("[rasa-proxy] Upstream request timed out", createTraceLogContext(traceId, {
         target,
         method,

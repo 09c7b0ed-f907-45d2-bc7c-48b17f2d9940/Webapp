@@ -7,19 +7,16 @@ import {
   SidebarHeader,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
   SidebarSeparator,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { SquarePen, Search, X, Pencil, Pin} from "lucide-react";
+import { SquarePen, Search, X, Pencil } from "lucide-react";
 import { ArrowLeftToLine, PanelLeftIcon } from "lucide-react"
-import { useEffect, useState } from "react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useCallback, useEffect, useState } from "react";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Field, FieldGroup } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import {AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription,AlertDialogFooter,AlertDialogHeader,AlertDialogTitle,AlertDialogTrigger} from "@/components/ui/alert-dialog"
 import { toast } from "sonner";
 import { useThread } from "@/components/ThreadContext";
@@ -34,13 +31,8 @@ type Thread = {
 
 export function SideMenu() {
   const {
-    state,
     open,
     setOpen,
-    openMobile,
-    setOpenMobile,
-    isMobile,
-    toggleSidebar,
   } = useSidebar();
   
   const { t } = useTranslation('common');
@@ -94,37 +86,7 @@ export function SideMenu() {
     }
   };
 
-  async function getThreads() {
-  setLoading(true);
-  try {
-    const res = await fetch('/api/threads', { method: 'GET' });
-
-    if (!res.ok) {
-      console.error('Failed to fetch threads:', res.statusText);
-      return;
-    }
-
-    const data = await res.json();
-
-    const newThreads = (data.results || []);
-    if (newThreads.length === 0) {
-      await postThread(`${t('threads.name.default')}1`);
-      return;
-    }
-
-    setThreads(newThreads);
-    const hasCurrentThread = currentThreadId !== null && newThreads.some((thread: Thread) => thread.id === currentThreadId);
-    if ((!hasCurrentThread || currentThreadId === null) && newThreads.length > 0) {
-      setCurrentThreadId(newThreads[0].id);
-    }
-    } catch (err) {
-      console.error('Error fetching threads:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function postThread(name: string) {
+  const postThread = useCallback(async (name: string) => {
     const res = await fetch('/api/threads', {
       method: 'POST',
       headers: {
@@ -137,19 +99,48 @@ export function SideMenu() {
 
     if (res.ok) {
       toast(`Thread ${name} has been created`)
+      setThreads((prev) => [data, ...prev.filter((thread) => thread.id !== data.id)]);
       setCurrentThreadId(data.id);
-      getThreads();
-      
     } else {
       console.error('Failed to create thread:', res.status, data);
     }
-  }
+  }, [setCurrentThreadId]);
+
+  const getThreads = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/threads', { method: 'GET' });
+
+      if (!res.ok) {
+        console.error('Failed to fetch threads:', res.statusText);
+        return;
+      }
+
+      const data = await res.json();
+
+      const newThreads = (data.results || []);
+      if (newThreads.length === 0) {
+        await postThread(`${t('threads.name.default')}1`);
+        return;
+      }
+
+      setThreads(newThreads);
+      const hasCurrentThread = currentThreadId !== null && newThreads.some((thread: Thread) => thread.id === currentThreadId);
+      if ((!hasCurrentThread || currentThreadId === null) && newThreads.length > 0) {
+        setCurrentThreadId(newThreads[0].id);
+      }
+    } catch (err) {
+      console.error('Error fetching threads:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentThreadId, postThread, setCurrentThreadId, t]);
 
 
   useEffect(() => {
     setOpen(true);
     getThreads();
-  }, []);
+  }, [getThreads, setOpen]);
 
   useEffect(() => {
     const onThreadActivity = (event: Event) => {

@@ -11,21 +11,10 @@ import { useTranslation } from "react-i18next";
 import i18n from "../../../i18n";
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/locales/config";
 
-const themes = [
-	// { key: "topbar.theme.default", value: "default" },
-	{ key: "topbar.theme.resq", value: "resq" },
-	// { key: "topbar.theme.green", value: "green" },
-	// { key: "topbar.theme.red", value: "red" },
-	// { key: "topbar.theme.magenta", value: "magenta" },
-	// { key: "topbar.theme.blue", value: "blue" },
-	// { key: "topbar.theme.yellow", value: "yellow" },
-] as const;
-
 const baseLanguages: { label: string; value: string }[] = SUPPORTED_LANGUAGES.map((code) => ({ label: LANGUAGE_LABELS[code], value: code }));
 
 export default function TopBar() {
 	const theme = useSettingsStore((s) => s.theme);
-	const setTheme = useSettingsStore((s) => s.setTheme);
 	const dark = useSettingsStore((s) => s.darkMode);
 	const setDark = useSettingsStore((s) => s.setDarkMode);
 	const language = useSettingsStore((s) => s.language);
@@ -115,7 +104,7 @@ export default function TopBar() {
 					</Button>
 				) : null}
 				{/* Language selector */}
-				<Select value={language} onValueChange={(v) => setLanguage(v as any)}>
+				<Select value={language} onValueChange={(v) => setLanguage(v)}>
 					<SelectTrigger className="w-fit shadow-none hover:bg-black/5" aria-label={t("topbar.language")}>
 						<SelectValue placeholder={t("topbar.language")} />
 					</SelectTrigger>

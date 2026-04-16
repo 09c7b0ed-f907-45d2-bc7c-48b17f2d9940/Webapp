@@ -1,7 +1,7 @@
 import { getToken } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies, headers } from "next/headers";
-import { createFeedbackReporterKey, getFeedbackReporterAliases } from "@/lib/feedbackAccess";
+import { getFeedbackReporterAliases } from "@/lib/feedbackAccess";
 import { isMessageFeedbackEnabled } from "@/lib/feedbackConfig";
 import { listFeedbackStatusesForUserThread } from "@/lib/feedbackStore";
 import { fetchRasaHistory } from "@/lib/rasaHistory";
