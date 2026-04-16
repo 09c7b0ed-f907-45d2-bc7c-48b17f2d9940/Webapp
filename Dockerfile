@@ -17,6 +17,7 @@ FROM node:18-alpine AS runner
 WORKDIR /app
 
 RUN npm install -g pnpm
+RUN mkdir -p /app/.data
 
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
@@ -24,6 +25,7 @@ COPY --from=builder /app/public ./public
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV FEEDBACK_LOCAL_STORE_PATH=/app/.data/feedback-store.json
 
 ENV HOSTNAME=0.0.0.0
 EXPOSE 3000

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactElement } from "react";
 import { useChatStore } from "@/store/useChatStore";
 import type { ChartDTO } from "@/models/dto/charts";
 import { LineChartView } from "@/components/charts/LineChartView";
@@ -19,12 +20,10 @@ export default function VisualizationWindow() {
   const selectedIndex = useChatStore((s) => s.selectedChartIndex);
   const { t } = useTranslation('common');
 
-
   if (!visualization || selectedIndex === null || !visualization.charts?.length) {
-    
-    return(
+    return (
       <div>
-        <div className=" font-semibold text-primary" >{t('visualization.title')}</div>
+        <div className=" font-semibold text-primary">{t('visualization.title')}</div>
         <div className="text-center text-muted-foreground p-4">{t('visualization.none')}</div>
       </div>
     );
@@ -38,41 +37,47 @@ export default function VisualizationWindow() {
 
   const chart: ChartDTO = charts[selectedIndex] as ChartDTO;
 
+  let content: ReactElement | null = null;
+
   if (chart.type === "LINE") {
-    return <LineChartView chart={chart} />;
+    content = <LineChartView chart={chart} />;
   }
 
   if (chart.type === 'BOX') {
-    return <BoxChartView chart={chart} />;
+    content = <BoxChartView chart={chart} />;
   }
 
   if (chart.type === "AREA") {
-    return <AreaChartView chart={chart} />;
+    content = <AreaChartView chart={chart} />;
   }
 
   if (chart.type === "BAR") {
-    return <BarChartView chart={chart} />;
+    content = <BarChartView chart={chart} />;
   }
 
   if (chart.type === "PIE") {
-    return <PieChartView chart={chart} />;
+    content = <PieChartView chart={chart} />;
   }
 
   if (chart.type === "RADAR") {
-    return <RadarChartView chart={chart} />;
+    content = <RadarChartView chart={chart} />;
   }
 
   if (chart.type === "SCATTER") {
-    return <ScatterChartView chart={chart} />;
+    content = <ScatterChartView chart={chart} />;
   }
 
   if (chart.type === 'HISTOGRAM') {
-    return <HistogramChartView chart={chart} />;
+    content = <HistogramChartView chart={chart} />;
   }
 
   if (chart.type === 'WATERFALL') {
-    return <WaterfallChartView chart={chart} />;
+    content = <WaterfallChartView chart={chart} />;
   }
 
-  return null;
+  if (!content) {
+    return null;
+  }
+
+  return <div className="relative h-full w-full">{content}</div>;
 }

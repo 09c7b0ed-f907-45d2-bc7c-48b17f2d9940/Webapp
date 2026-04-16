@@ -3,5 +3,10 @@
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "webshop",
 	"workspaceFolder": "/workspace",
-	"postCreateCommand": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile"
+	"postCreateCommand": "corepack enable && corepack prepare pnpm@latest --activate && pnpm install --frozen-lockfile",
+	"portsAttributes": {
+		"3002": {
+			"label": "3000"
+		}
+	}
 }

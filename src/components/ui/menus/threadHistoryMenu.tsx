@@ -111,7 +111,8 @@ export function SideMenu() {
     }
 
     setThreads(newThreads);
-    if (currentThreadId === null && newThreads.length > 0) {
+    const hasCurrentThread = currentThreadId !== null && newThreads.some((thread: Thread) => thread.id === currentThreadId);
+    if ((!hasCurrentThread || currentThreadId === null) && newThreads.length > 0) {
       setCurrentThreadId(newThreads[0].id);
     }
     } catch (err) {

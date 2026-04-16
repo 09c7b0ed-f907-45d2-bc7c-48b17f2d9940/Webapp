@@ -1,5 +1,6 @@
 import KeycloakProvider from "next-auth/providers/keycloak";
-import type { AuthOptions } from "next-auth";
+import type { AuthOptions, DefaultSession } from "next-auth";
+import { isFeedbackAdmin } from "@/lib/feedbackAccess";
 
 const parsedRefreshSafetyMs = Number(process.env.NEXTAUTH_ACCESS_TOKEN_REFRESH_SAFETY_MS ?? "90000");
 const ACCESS_TOKEN_REFRESH_SAFETY_MS =
@@ -14,6 +15,10 @@ declare module "next-auth" {
     accessTokenExpires?: number;
     accessTokenRefreshedAt?: number;
     error?: string;
+    isFeedbackAdmin?: boolean;
+    user: DefaultSession["user"] & {
+      id?: string;
+    };
   }
 }
 
@@ -24,6 +29,7 @@ declare module "next-auth/jwt" {
     accessTokenExpires?: number;
     accessTokenRefreshedAt?: number;
     error?: string;
+    isFeedbackAdmin?: boolean;
   }
 }
 
@@ -49,6 +55,11 @@ export const authOptions: AuthOptions = {
           : Date.now() + 60 * 60 * 1000;
         token.error = undefined;
       }
+
+      token.isFeedbackAdmin = isFeedbackAdmin({
+        email: typeof token.email === "string" ? token.email : null,
+        accessToken: typeof token.accessToken === "string" ? token.accessToken : null,
+      });
 
       const now = Date.now();
       const refreshWindowStart =
@@ -93,7 +104,7 @@ export const authOptions: AuthOptions = {
             token.accessTokenRefreshedAt = Date.now();
             token.error = undefined;
             return token;
-          } catch (error) {
+          } catch {
             token.error = "RefreshAccessTokenError";
             return token;
           }
@@ -111,6 +122,13 @@ export const authOptions: AuthOptions = {
       session.accessTokenExpires = typeof token.accessTokenExpires === "number" ? token.accessTokenExpires : undefined;
       session.accessTokenRefreshedAt =
         typeof token.accessTokenRefreshedAt === "number" ? token.accessTokenRefreshedAt : undefined;
+      session.isFeedbackAdmin = token.isFeedbackAdmin === true;
+      session.user = {
+        ...session.user,
+        id: typeof token.sub === "string" ? token.sub : undefined,
+        email: typeof token.email === "string" ? token.email : session.user?.email ?? undefined,
+        name: typeof token.name === "string" ? token.name : session.user?.name ?? undefined,
+      };
       if (token.error) session.error = token.error as string;
       return session;
     },

@@ -1,10 +1,15 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatInput } from "@/components/ui/chat-input";
 import ChatMessageList from "@/components/ui/chat-message-list";
 import { useChatStore } from "@/store/useChatStore";
-import type { VisualizationResponseDTO } from "@/models/dto/response";
+import {
+  isVisualizationPlanMessageDTO,
+  isVisualizationResponseDTO,
+  resolveVisualizationTraceId,
+  type VisualizationPlanMessageDTO,
+} from "@/models/dto/response";
 import { useSettingsStore } from "@/store/useSettingsStore";
 import { useTranslation } from "react-i18next";
 import "@/i18n";
@@ -17,7 +22,14 @@ type Message = {
   id: string;
   sender: "user" | "other";
   content: string;
-  kind?: "normal" | "progress";
+  kind?: "normal" | "progress" | "plan";
+  feedbackKey?: string;
+  feedback?: {
+    submitted: boolean;
+    rating: "up" | "down";
+    issues?: string[];
+    detailText?: string | null;
+  } | null;
   debug?: {
     pending?: boolean;
     eventIndex?: number;
@@ -33,6 +45,111 @@ type Message = {
   };
 };
 
+type HistoryResponseItem = {
+  role?: unknown;
+  text?: unknown;
+  custom?: unknown;
+  feedbackKey?: unknown;
+  feedback?: unknown;
+  debug?: unknown;
+};
+
+type FeedbackPayload = {
+  submitted: boolean;
+  rating: "up" | "down";
+  issues?: string[];
+  detailText?: string | null;
+};
+
+type HistoryApiResponse = {
+  history?: unknown;
+  error?: string;
+  status?: number;
+};
+
+const PLAN_CHAT_DEBUG_MODE = process.env.NODE_ENV === "development";
+
+function formatPlanDebugMessage(plan: VisualizationPlanMessageDTO, traceId: string | null): string {
+  const normalizedPlan: VisualizationPlanMessageDTO = {
+    ...plan,
+    ...(traceId && !plan.trace_id ? { trace_id: traceId } : {}),
+  };
+
+  let payload = "";
+  try {
+    payload = JSON.stringify(normalizedPlan, null, 2);
+  } catch {
+    payload = "{\n  \"error\": \"Failed to serialize visualization plan payload\"\n}";
+  }
+
+  return ["[dev] Visualization plan payload", payload].join("\n");
+}
+
+function mapHistoryItems(items: unknown[]): { mapped: Message[]; customPayloads: unknown[] } {
+  const customPayloads: unknown[] = [];
+  const mapped = items.flatMap((item): Message[] => {
+    const candidate = item as HistoryResponseItem;
+    if (!candidate || (candidate.role !== "user" && candidate.role !== "assistant")) return [];
+
+    if (candidate.custom && typeof candidate.custom === "object") {
+      customPayloads.push(candidate.custom);
+    }
+
+    if (typeof candidate.text !== "string") return [];
+
+    return [{
+      id: crypto.randomUUID(),
+      sender: candidate.role === "user" ? "user" : "other",
+      content: candidate.text,
+      feedbackKey: typeof candidate.feedbackKey === "string" ? candidate.feedbackKey : undefined,
+      feedback:
+        candidate.feedback && typeof candidate.feedback === "object"
+          ? (candidate.feedback as FeedbackPayload)
+          : undefined,
+      debug: candidate.debug && typeof candidate.debug === "object" ? candidate.debug as Message["debug"] : undefined,
+    }];
+  });
+
+  return { mapped, customPayloads };
+}
+
+async function fetchThreadHistory(threadId: number): Promise<{
+  mapped: Message[];
+  customPayloads: unknown[];
+  error: string | null;
+  status: number | null;
+}> {
+  const res = await fetch(`/api/rasa/history?threadId=${threadId}`, {
+    credentials: "include",
+    cache: "no-store",
+  });
+
+  let data: HistoryApiResponse | null = null;
+  try {
+    data = (await res.json()) as HistoryApiResponse;
+  } catch {
+    data = null;
+  }
+
+  if (!res.ok) {
+    return {
+      mapped: [],
+      customPayloads: [],
+      error: data?.error ?? `History request failed (${res.status})`,
+      status: data?.status ?? res.status,
+    };
+  }
+
+  const { mapped, customPayloads } = mapHistoryItems(Array.isArray(data?.history) ? data.history : []);
+
+  return {
+    mapped,
+    customPayloads,
+    error: typeof data?.error === "string" ? data.error : null,
+    status: typeof data?.status === "number" ? data.status : res.status,
+  };
+}
+
 
 export default function ChatWindow() {
   const { currentThreadId } = useThread();
@@ -40,41 +157,76 @@ export default function ChatWindow() {
   const [loading, setLoading] = useState(false);
   const [isWaitingForBot, setIsWaitingForBot] = useState(false);
   const hydrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const seenPlanMessageKeysRef = useRef<Set<string>>(new Set());
   const language = useSettingsStore((s) => s.language);
   const { t } = useTranslation('common');
 
-  const hydrateFromHistory = async () => {
+  const emitPlanDebugMessage = useCallback((plan: VisualizationPlanMessageDTO, traceId: string | null) => {
+    if (!PLAN_CHAT_DEBUG_MODE) {
+      return;
+    }
+
+    const planKey = traceId
+      ? `trace:${traceId}`
+      : (() => {
+          try {
+            return `plan:${JSON.stringify(plan.plan)}`;
+          } catch {
+            return null;
+          }
+        })();
+
+    if (!planKey || seenPlanMessageKeysRef.current.has(planKey)) {
+      return;
+    }
+
+    seenPlanMessageKeysRef.current.add(planKey);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        sender: "other",
+        kind: "plan",
+        content: formatPlanDebugMessage(plan, traceId),
+        debug: {
+          source: "visualization-plan",
+        },
+      },
+    ]);
+  }, []);
+
+  const applyVisualizationFromCustom = useCallback((custom: unknown) => {
+    const { setVisualization, addToHistory, setSelectedChartIndex, rememberVisualizationPlan } = useChatStore.getState();
+
+    if (isVisualizationPlanMessageDTO(custom)) {
+      const traceId = resolveVisualizationTraceId(custom);
+      if (traceId) {
+        rememberVisualizationPlan(traceId, custom);
+      }
+      emitPlanDebugMessage(custom, traceId);
+      return;
+    }
+
+    if (isVisualizationResponseDTO(custom)) {
+      setVisualization(custom);
+      addToHistory(custom);
+      setSelectedChartIndex(0);
+    }
+  }, []);
+
+  const hydrateFromHistory = useCallback(async () => {
     if (!currentThreadId) return;
 
     try {
-      const res = await fetch(`/api/rasa/history?threadId=${currentThreadId}`, {
-        credentials: "include",
-        cache: "no-store",
-      });
-      if (!res.ok) return;
+      const { mapped, customPayloads, error, status } = await fetchThreadHistory(currentThreadId);
 
-      const data = await res.json();
-      const customPayloads: unknown[] = [];
-      const mapped = (data.history || []).flatMap((item: any) => {
-        if (!item || (item.role !== "user" && item.role !== "assistant")) return [];
-
-        if (item.custom && typeof item.custom === "object") {
-          customPayloads.push(item.custom);
-        }
-
-        if (typeof item.text !== "string") return [];
-
-        return [{
-          id: crypto.randomUUID(),
-          sender: item.role === "user" ? "user" : "other",
-          content: item.text,
-          debug: item.debug && typeof item.debug === "object" ? item.debug : undefined,
-        } as Message];
-      });
+      if (error && status !== 404) {
+        console.warn("Silent tracker hydration degraded:", error);
+      }
 
       setMessages((prev) => {
-        const progress = prev.filter((m) => m.kind === "progress");
-        return progress.length > 0 ? [...mapped, ...progress] : mapped;
+        const carryOver = prev.filter((m) => m.kind === "progress" || m.kind === "plan");
+        return carryOver.length > 0 ? [...mapped, ...carryOver] : mapped;
       });
       for (const customPayload of customPayloads) {
         applyVisualizationFromCustom(customPayload);
@@ -82,9 +234,9 @@ export default function ChatWindow() {
     } catch (err) {
       console.error("Silent tracker hydration failed:", err);
     }
-  };
+  }, [applyVisualizationFromCustom, currentThreadId]);
 
-  const scheduleHydration = () => {
+  const scheduleHydration = useCallback(() => {
     if (hydrationTimerRef.current) {
       clearTimeout(hydrationTimerRef.current);
     }
@@ -94,20 +246,10 @@ export default function ChatWindow() {
         console.error("Failed to hydrate tracker metadata:", err);
       });
     }, 900);
-  };
+  }, [hydrateFromHistory]);
 
-  const applyVisualizationFromCustom = (custom: unknown) => {
-    const viz = (custom ?? null) as VisualizationResponseDTO | null;
-    if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
-      const { setVisualization, addToHistory, setSelectedChartIndex } = useChatStore.getState();
-      setVisualization(viz);
-      addToHistory(viz);
-      setSelectedChartIndex(0);
-    }
-  };
-
-  const handleCustomPayload = (custom: unknown) => {
-    const obj = custom as any;
+  const handleCustomPayload = useCallback((custom: unknown) => {
+    const obj = custom as { progress?: unknown } | null;
     const progressText =
       obj && typeof obj === "object" && typeof obj.progress === "string"
         ? (obj.progress as string)
@@ -134,9 +276,9 @@ export default function ChatWindow() {
     setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
     setIsWaitingForBot(false);
     applyVisualizationFromCustom(custom);
-  };
+  }, [applyVisualizationFromCustom]);
 
-  const handleIncomingPayload = (payload: unknown) => {
+  const handleIncomingPayload = useCallback((payload: unknown) => {
     const obj = payload as { text?: unknown; custom?: unknown; type?: unknown } | null;
     if (!obj || typeof obj !== "object") return;
 
@@ -172,7 +314,7 @@ export default function ChatWindow() {
         scheduleHydration();
       }
     }
-  };
+  }, [handleCustomPayload, scheduleHydration]);
 
  useEffect(() => {
     return () => {
@@ -183,6 +325,8 @@ export default function ChatWindow() {
   }, []);
 
   useEffect(() => {
+    seenPlanMessageKeysRef.current.clear();
+
     let cancelled = false;
 
     if (!currentThreadId) {
@@ -191,45 +335,31 @@ export default function ChatWindow() {
       return;
     }
 
+    const threadId = currentThreadId;
+
     async function fetchMessages() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/rasa/history?threadId=${currentThreadId}`, {
-          credentials: "include",
-          cache: "no-store",
-        });
-        if (!res.ok) throw new Error("Failed to fetch Rasa history");
-
-        const data = await res.json();
-        const customPayloads: unknown[] = [];
-        const mapped = (data.history || []).flatMap((item: any) => {
-          if (!item || (item.role !== "user" && item.role !== "assistant")) return [];
-
-          if (item.custom && typeof item.custom === "object") {
-            customPayloads.push(item.custom);
-          }
-
-          if (typeof item.text !== "string") return [];
-
-          return [{
-            id: crypto.randomUUID(),
-            sender: item.role === "user" ? "user" : "other",
-            content: item.text,
-            debug: item.debug && typeof item.debug === "object" ? item.debug : undefined,
-          } as Message];
-        });
+        const { mapped, customPayloads, error, status } = await fetchThreadHistory(threadId);
 
         if (!cancelled) {
+          if (error && status !== 404) {
+            console.warn("History request degraded:", error);
+          }
+
           setMessages((prev) => {
-            const progress = prev.filter((m) => m.kind === "progress");
-            return progress.length > 0 ? [...mapped, ...progress] : mapped;
+            const carryOver = prev.filter((m) => m.kind === "progress" || m.kind === "plan");
+            return carryOver.length > 0 ? [...mapped, ...carryOver] : mapped;
           });
           for (const customPayload of customPayloads) {
             applyVisualizationFromCustom(customPayload);
           }
         }
       } catch (err) {
-        console.error(err);
+        console.error("Failed to fetch thread history", err);
+        if (!cancelled) {
+          setMessages([]);
+        }
       } finally {
         if (!cancelled) {
           setTimeout(() => setLoading(false), 150);
@@ -242,7 +372,7 @@ export default function ChatWindow() {
     return () => {
       cancelled = true;
     };
-  }, [currentThreadId]);
+  }, [applyVisualizationFromCustom, currentThreadId]);
 
   useEffect(() => {
     if (!currentThreadId) return;
@@ -265,7 +395,7 @@ export default function ChatWindow() {
     return () => {
       es.close();
     };
-  }, [currentThreadId]);
+  }, [currentThreadId, handleIncomingPayload]);
 
   const sendMessage = async (msg: string) => {
     if (!currentThreadId) {
@@ -387,7 +517,7 @@ export default function ChatWindow() {
             </div>
           </div>
          ) : (
-          <ChatMessageList  messages={messages} />
+          <ChatMessageList messages={messages} currentThreadId={currentThreadId} />
         )}
         <ChatInput onSubmit={sendMessage} loading={isWaitingForBot} />
       </div>

@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import { LogOutIcon, Moon, Sun } from "lucide-react"
 import { signOut } from "next-auth/react";
 import Image from "next/image";
@@ -34,6 +35,7 @@ export default function TopBar() {
 
 	const [botsByLang, setBotsByLang] = useState<Record<string, boolean>>({});
 		const [botLangs, setBotLangs] = useState<string[]>([]);
+	const [canViewFeedbackAdmin, setCanViewFeedbackAdmin] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -49,6 +51,26 @@ export default function TopBar() {
 			})
 			.catch(() => setBotsByLang({}));
 		return () => { cancelled = true };
+	}, []);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		fetch('/api/feedback/config', { cache: 'no-store' })
+			.then((response) => response.ok ? response.json() : Promise.reject(response.status))
+			.then((data: { canViewAdmin?: boolean; adminEnabled?: boolean }) => {
+				if (cancelled) return;
+				setCanViewFeedbackAdmin(data.canViewAdmin === true && data.adminEnabled === true);
+			})
+			.catch(() => {
+				if (!cancelled) {
+					setCanViewFeedbackAdmin(false);
+				}
+			});
+
+		return () => {
+			cancelled = true;
+		};
 	}, []);
 
 	useEffect(() => {
@@ -87,6 +109,11 @@ export default function TopBar() {
 				<Image src="/logo.png" alt={t('topbar.logoAlt')} width={629} height={179} style={{ height: "200%", width: "auto" }} />
 			</div>
 			<div className="flex items-center gap-4 ">
+				{canViewFeedbackAdmin ? (
+					<Button variant="outline" className="rounded" asChild>
+						<Link href="/admin/feedback">Feedback Admin</Link>
+					</Button>
+				) : null}
 				{/* Language selector */}
 				<Select value={language} onValueChange={(v) => setLanguage(v as any)}>
 					<SelectTrigger className="w-fit shadow-none hover:bg-black/5" aria-label={t("topbar.language")}>

@@ -25,7 +25,7 @@ export function getRasaBots(): RasaBot[] {
         entries = parsed.filter((e) => typeof e?.lang === 'string' && typeof e?.url === 'string');
       }
     } catch {
-  // Fallback: parse list like "en=http://...;da=http://..." or with commas/newlines
+  // Fallback: parse list like "en=http://...;el=http://..." or with commas/newlines
   const parts = rawList.split(/[;,\n\r]+/).map((p) => p.trim()).filter(Boolean);
       entries = parts
         .map((p) => p.split('='))
