@@ -24,7 +24,7 @@ import {AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, A
 import { toast } from "sonner";
 import { useThread } from "@/components/ThreadContext";
 import { useTranslation } from "react-i18next";
-import "@/i18n";
+import { Skeleton } from "@/components/ui/skeleton";
 
 
 type Thread = {
@@ -47,6 +47,7 @@ export function SideMenu() {
 
   const [threads, setThreads] = useState<Thread[]>([]);
   const [openId, setOpenId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const { currentThreadId, setCurrentThreadId } = useThread();
 
@@ -94,6 +95,7 @@ export function SideMenu() {
   };
 
   async function getThreads() {
+  setLoading(true);
   try {
     const res = await fetch('/api/threads', { method: 'GET' });
 
@@ -117,6 +119,8 @@ export function SideMenu() {
     }
     } catch (err) {
       console.error('Error fetching threads:', err);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -250,118 +254,129 @@ export function SideMenu() {
         </SidebarGroup>
 
         {/*Conversation Threads List*/}
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+        <SidebarGroup className="group-data-[collapsible=icon]:hidden gap-1">
           <div className="text-sidebar-foreground/70 text-xs truncate">
             {t('threads.menu.list')}
           </div> 
           <div> 
-            {threads.map((thread) => (
-              <SidebarMenuItem key={thread.id} >
-                <div className="relative group/item flex flex-row items-center rounded-md min-w-0 hover:bg-sidebar-accent cursor-pointer">
-                  <SidebarMenuButton
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentThreadId(thread.id);
-                      
-                    }}
-                    className=" group-hover/item:text-white hover:text-white">
-                    <span className="truncate ml-2">{thread.name}</span>
-                  </SidebarMenuButton>
-                  <Dialog
-                    open={openId === thread.id}
-                    onOpenChange={(open) => setOpenId(open ? thread.id : null)}
-                  >
-                    <DialogTrigger asChild>
-                      <button
-                        onClick={(e) => e.stopPropagation()}
-                        className=" opacity-0 transition-opacity duration-75 group-hover/item:opacity-100 p-1 rounded text-white  hover:text-black"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                    </DialogTrigger>
+            {loading ? (
+              <div className="flex flex-col gap-1">
+              
+                  <Skeleton className="h-6 w-10/12 rounded-md bg-muted my-1" />
 
-                    {/* Rename Thread Button*/}
-                    <DialogContent className="sm:max-w-sm">
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          const input = e.currentTarget.elements.namedItem("name") as HTMLInputElement;
-                          renameThread(thread.id, input.value);
-                          setOpenId(null);
-                        }}
-                      >
-                        <DialogHeader className="mb-2">
-                          <DialogTitle>{t('threads.rename.title')}</DialogTitle>
-                          <DialogDescription>
-                            {t('threads.rename.description')}
-                          </DialogDescription>
-                        </DialogHeader>
-                        <Field className="mb-6">
-                          <Input
-                            name="name"
-                            defaultValue={thread.name}
-                          />
-                        </Field>
-                        <DialogFooter>
-                          <DialogClose asChild>
-                            <Button type="button" variant="outline" className="hover:text-white">
-                              {t('threads.dialog.cancel')}
+                  <Skeleton className="h-6 w-11/12 rounded-md bg-muted my-1" />
+  
+                  <Skeleton className="h-6 w-9/12 rounded-md bg-muted my-1" />
+              </div>
+            ) : (
+              threads.map((thread) => (
+                <SidebarMenuItem key={thread.id} >
+                  <div className="relative group/item flex flex-row items-center rounded-md min-w-0 hover:bg-sidebar-accent cursor-pointer">
+                    <SidebarMenuButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentThreadId(thread.id);
+                        
+                      }}
+                      className=" group-hover/item:text-white hover:text-white">
+                      <span className="truncate ml-2">{thread.name}</span>
+                    </SidebarMenuButton>
+                    <Dialog
+                      open={openId === thread.id}
+                      onOpenChange={(open) => setOpenId(open ? thread.id : null)}
+                    >
+                      <DialogTrigger asChild>
+                        <button
+                          onClick={(e) => e.stopPropagation()}
+                          className=" opacity-0 transition-opacity duration-75 group-hover/item:opacity-100 p-1 rounded text-white  hover:text-black"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </DialogTrigger>
+
+                      {/* Rename Thread Button*/}
+                      <DialogContent className="sm:max-w-sm">
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            const input = e.currentTarget.elements.namedItem("name") as HTMLInputElement;
+                            renameThread(thread.id, input.value);
+                            setOpenId(null);
+                          }}
+                        >
+                          <DialogHeader className="mb-2">
+                            <DialogTitle>{t('threads.rename.title')}</DialogTitle>
+                            <DialogDescription>
+                              {t('threads.rename.description')}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <Field className="mb-6">
+                            <Input
+                              name="name"
+                              defaultValue={thread.name}
+                            />
+                          </Field>
+                          <DialogFooter>
+                            <DialogClose asChild>
+                              <Button type="button" variant="outline" className="hover:text-white">
+                                {t('threads.dialog.cancel')}
+                              </Button>
+                            </DialogClose>
+                            <Button type="submit">
+                              {t('threads.dialog.save')}
                             </Button>
-                          </DialogClose>
-                          <Button type="submit">
-                            {t('threads.dialog.save')}
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                  
-                  <div className="mx-auto flex-1"/>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                    
+                    <div className="mx-auto flex-1"/>
 
-                  {/* Delete Thread Button */}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <button
-                        onClick={(e) => {e.stopPropagation(); }}
-                        className="mr-2 opacity-0 transition-opacity duration-75 group-hover/item:opacity-100 p-1 rounded text-white hover:text-red-600"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <form
-                        onSubmit={(e) => {
-                          e.preventDefault();
-                          deleteThread(thread.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
+                    {/* Delete Thread Button */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          onClick={(e) => {e.stopPropagation(); }}
+                          className="mr-2 opacity-0 transition-opacity duration-75 group-hover/item:opacity-100 p-1 rounded text-white hover:text-red-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <form
+                          onSubmit={(e) => {
                             e.preventDefault();
                             deleteThread(thread.id);
-                          }
-                        }}
-                      >
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>{t('threads.delete.title')} {thread.name}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {t('threads.delete.description')}
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="hover:text-white">{t('threads.dialog.cancel')}</AlertDialogCancel>
-                          <AlertDialogAction
-                            asChild
-                            variant="destructive"
-                          >
-                            <button type="submit" className="hover:text-shadow-2xs">{t('threads.dialog.delete') }</button>
-                          </AlertDialogAction>                          
-                        </AlertDialogFooter>
-                      </form>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </SidebarMenuItem>
-            ))}
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              deleteThread(thread.id);
+                            }
+                          }}
+                        >
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>{t('threads.delete.title')} {thread.name}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {t('threads.delete.description')}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel className="hover:text-white">{t('threads.dialog.cancel')}</AlertDialogCancel>
+                            <AlertDialogAction
+                              asChild
+                              variant="destructive"
+                            >
+                              <button type="submit" className="hover:text-shadow-2xs">{t('threads.dialog.delete') }</button>
+                            </AlertDialogAction>                          
+                          </AlertDialogFooter>
+                        </form>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </SidebarMenuItem>
+              ))
+            )}
           </div>
         </SidebarGroup>          
       </SidebarContent>
