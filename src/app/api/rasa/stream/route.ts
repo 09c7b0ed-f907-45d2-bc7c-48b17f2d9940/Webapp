@@ -27,16 +27,9 @@ export async function GET(req: NextRequest) {
   };
 
   putUserAccessToken({
-    sub: userSub,
+    sub: senderId,
     ...tokenPayload,
   });
-
-  if (senderId !== userSub) {
-    putUserAccessToken({
-      sub: senderId,
-      ...tokenPayload,
-    });
-  }
 
   const encoder = new TextEncoder();
   const clientSignal: AbortSignal | undefined = (req as unknown as { signal?: AbortSignal }).signal;

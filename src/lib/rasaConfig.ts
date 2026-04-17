@@ -1,4 +1,4 @@
-import { SUPPORTED_LANGUAGES, LANGUAGE_LABELS } from '@/locales/config';
+import { LANGUAGE_LABELS } from '@/locales/config';
 
 export type RasaBot = {
   lang: string; // BCP 47 tag
@@ -25,7 +25,7 @@ export function getRasaBots(): RasaBot[] {
         entries = parsed.filter((e) => typeof e?.lang === 'string' && typeof e?.url === 'string');
       }
     } catch {
-  // Fallback: parse list like "en=http://...;da=http://..." or with commas/newlines
+  // Fallback: parse list like "en=http://...;el=http://..." or with commas/newlines
   const parts = rawList.split(/[;,\n\r]+/).map((p) => p.trim()).filter(Boolean);
       entries = parts
         .map((p) => p.split('='))
@@ -58,9 +58,6 @@ export function getRasaUrlForRequest(headers: Headers, cookies: Map<string, stri
 
   const cookieLang = cookies.get('lang') ?? null;
   const headerLang = headers.get('accept-language');
-  const normCookie = normalizeLang(cookieLang);
-  const normHeader = normalizeLang(headerLang);
-
   const pref = normalizeLang(cookieLang) || normalizeLang(headerLang);
 
   let found: RasaBot | undefined;

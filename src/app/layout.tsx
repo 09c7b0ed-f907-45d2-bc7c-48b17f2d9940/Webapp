@@ -5,7 +5,7 @@ import SessionRoot from "@/components/SessionRoot";
 import TopBar from "@/components/ui/menus/topBarMenu";
 import { cookies } from 'next/headers';
 import { resources } from '@/locales/config';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { SideMenu } from '@/components/ui/menus/threadHistoryMenu';
 import { Toaster } from '@/components/ui/sonner';
 import { ThreadProvider } from '@/components/ThreadContext';
@@ -20,7 +20,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   const titleText = (resources[lang] || resources.en)["app.title"]; 
 
-  const htmlAttrs: Record<string, string> = { lang } as any;
+  const htmlAttrs: Record<string, string> = { lang };
   if (theme && theme !== 'default') htmlAttrs['data-theme'] = theme;
   const htmlClass = dark ? 'dark' : undefined;
 

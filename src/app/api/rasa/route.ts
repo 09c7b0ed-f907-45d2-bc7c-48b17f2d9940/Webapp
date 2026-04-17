@@ -4,6 +4,7 @@ import { getRasaUrlForRequest } from "@/lib/rasaConfig";
 import { putUserAccessToken } from "@/lib/userTokenVault";
 import { buildRasaSenderId } from "@/lib/rasaSender";
 import { touchThreadForUser } from "@/lib/threadRegistryStore";
+import { createTraceLogContext, readTraceId, withTraceIdHeaders } from "@/lib/traceId";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,9 +12,13 @@ export const maxDuration = 600;
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req });
+  const traceId = readTraceId(req.headers);
 
   if (!token?.accessToken || !token?.sub) {
-    return new NextResponse("Unauthorized", { status: 401 });
+    return new NextResponse("Unauthorized", {
+      status: 401,
+      headers: withTraceIdHeaders(undefined, traceId),
+    });
   }
 
   const userSub = String(token.sub);
@@ -34,20 +39,16 @@ export async function POST(req: NextRequest) {
   };
 
   putUserAccessToken({
-    sub: userSub,
+    sub: senderId,
     ...tokenPayload,
   });
 
-  if (senderId !== userSub) {
-    putUserAccessToken({
-      sub: senderId,
-      ...tokenPayload,
-    });
-  }
-
   const apiUrl = getRasaUrlForRequest(req.headers, new Map(req.cookies.getAll().map(c => [c.name, c.value])));
   if (!apiUrl) {
-    return new NextResponse("Rasa not configured", { status: 500 });
+    return new NextResponse("Rasa not configured", {
+      status: 500,
+      headers: withTraceIdHeaders(undefined, traceId),
+    });
   }
 
   const baseCallback = process.env.CALLBACK_BASE_URL;
@@ -59,8 +60,15 @@ export async function POST(req: NextRequest) {
       ? `${proto}://${host}/api/rasa/long-task-callback`
       : null;
   const callbackUrl = callbackBase
-    ? `${callbackBase}?rasaUrl=${encodeURIComponent(apiUrl)}&senderId=${encodeURIComponent(senderId)}`
+    ? `${callbackBase}?rasaUrl=${encodeURIComponent(apiUrl)}&senderId=${encodeURIComponent(senderId)}${traceId ? `&traceId=${encodeURIComponent(traceId)}` : ""}`
     : null;
+
+  console.info("[rasa] Forwarding chat request", createTraceLogContext(traceId, {
+    senderId,
+    threadId,
+    hasCallbackUrl: Boolean(callbackUrl),
+    rasaUrl: apiUrl,
+  }));
 
   const controller = new AbortController();
   const clientSignal: AbortSignal | undefined = (req as unknown as { signal?: AbortSignal }).signal;
@@ -71,7 +79,9 @@ export async function POST(req: NextRequest) {
 
   const rasaStreamRes = await fetch(`${apiUrl}/webhooks/rest/webhook?stream=true`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       sender: senderId,
       message,
@@ -79,6 +89,7 @@ export async function POST(req: NextRequest) {
         ? {
             metadata: {
               callback_url: callbackUrl,
+              ...(traceId ? { trace_id: traceId } : {}),
             },
           }
         : {}),
@@ -86,11 +97,16 @@ export async function POST(req: NextRequest) {
     signal: controller.signal,
   });
 
+  console.info("[rasa] Received upstream stream response", createTraceLogContext(traceId, {
+    senderId,
+    status: rasaStreamRes.status,
+  }));
+
   return new Response(rasaStreamRes.body, {
     status: rasaStreamRes.status,
-    headers: {
+    headers: withTraceIdHeaders({
       "Content-Type": "application/x-ndjson; charset=utf-8",
       "Cache-Control": "no-store",
-    },
+    }, traceId),
   });
 }

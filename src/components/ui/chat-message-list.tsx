@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from "react";
+import MessageFeedbackControls from "@/components/feedback/message-feedback-controls";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import ChatBubble from "@/components/ui/chat-bubble";
 import {
@@ -17,7 +18,14 @@ type Message = {
   id: string;
   sender: "user" | "other";
   content: string;
-  kind?: "normal" | "progress";
+  kind?: "normal" | "progress" | "plan";
+  feedbackKey?: string;
+  feedback?: {
+    submitted: boolean;
+    rating: "up" | "down";
+    issues?: string[];
+    detailText?: string | null;
+  } | null;
   debug?: {
     pending?: boolean;
     eventIndex?: number;
@@ -39,11 +47,16 @@ type Message = {
 
 type Props = {
   messages: Message[];
+  currentThreadId: number | null;
   onButtonClick?: (payload: string) => void;
 };
 
-export default function ChatMessageList({ messages, onButtonClick }: Props) {
+export default function ChatMessageList({ messages, currentThreadId, onButtonClick }: Props) {
   const endRef = useRef<HTMLDivElement | null>(null);
+  const latestAssistantMessageIndex = [...messages]
+    .map((message, index) => ({ message, index }))
+    .filter(({ message }) => message.sender === "other" && message.kind !== "progress" && !!message.feedbackKey)
+    .at(-1)?.index;
 
   function stringifyDebugMetadata(debug: Message["debug"]): string {
     if (!debug) return "";
@@ -101,36 +114,15 @@ export default function ChatMessageList({ messages, onButtonClick }: Props) {
     <div className="relative flex-1  h-0 min-w-0">
       <ScrollArea className="h-full w-full ">
         <div className="flex flex-col gap-2 p-2 pt-10">
-          {messages.map((msg) => (
-            CHAT_DEBUG_MODE ? (
-              <ContextMenu key={msg.id}>
-                <ContextMenuTrigger asChild>
-                  <div>
-                    <ChatBubble
-                      message={msg.content}
-                      sender={msg.sender === "user" ? "me" : "other"}
-                      isProgress={msg.kind === "progress"}
-                      debug={msg.debug}
-                    />
-                  </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent className="w-72">
-                  <ContextMenuItem onSelect={() => void copyToClipboard(formatSingleMessage(msg, false))}>
-                    Copy Message
-                  </ContextMenuItem>
-                  <ContextMenuItem onSelect={() => void copyToClipboard(formatSingleMessage(msg, true))}>
-                    Copy Message + Metadata
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem onSelect={() => void copyToClipboard(formatAllMessages(false))}>
-                    Copy All Messages
-                  </ContextMenuItem>
-                  <ContextMenuItem onSelect={() => void copyToClipboard(formatAllMessages(true))}>
-                    Copy All Messages + Metadata
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
-            ) : (
+          {messages.map((msg, index) => {
+            const shouldShowFeedback =
+              currentThreadId != null &&
+              msg.sender === "other" &&
+              msg.kind !== "progress" &&
+              !!msg.feedbackKey &&
+              latestAssistantMessageIndex === index;
+
+            const bubble = (
               <ChatBubble
                 key={msg.id}
                 message={msg.content}
@@ -138,10 +130,47 @@ export default function ChatMessageList({ messages, onButtonClick }: Props) {
                 isProgress={msg.kind === "progress"}
                 debug={msg.debug}
                 buttons={msg.buttons}
-              onButtonClick={onButtonClick}
+                onButtonClick={onButtonClick}
+              />
+            );
+
+            return (
+              <div key={msg.id} className="group/message flex flex-col">
+                {CHAT_DEBUG_MODE ? (
+                  <ContextMenu>
+                    <ContextMenuTrigger asChild>
+                      <div>{bubble}</div>
+                    </ContextMenuTrigger>
+                    <ContextMenuContent className="w-72">
+                      <ContextMenuItem onSelect={() => void copyToClipboard(formatSingleMessage(msg, false))}>
+                        Copy Message
+                      </ContextMenuItem>
+                      <ContextMenuItem onSelect={() => void copyToClipboard(formatSingleMessage(msg, true))}>
+                        Copy Message + Metadata
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                      <ContextMenuItem onSelect={() => void copyToClipboard(formatAllMessages(false))}>
+                        Copy All Messages
+                      </ContextMenuItem>
+                      <ContextMenuItem onSelect={() => void copyToClipboard(formatAllMessages(true))}>
+                        Copy All Messages + Metadata
+                      </ContextMenuItem>
+                    </ContextMenuContent>
+                  </ContextMenu>
+                ) : <div>{bubble}</div>}
+
+                {shouldShowFeedback && msg.feedbackKey ? (
+                  <MessageFeedbackControls
+                    threadId={currentThreadId}
+                    messageKey={msg.feedbackKey}
+                    messageText={msg.content}
+                    initialFeedback={msg.feedback ?? null}
+                    
             />
-            )
-          ))}
+                ) : null}
+              </div>
+            );
+          })}
           <div ref={endRef} />
         </div>
       </ScrollArea>

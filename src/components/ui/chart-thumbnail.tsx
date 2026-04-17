@@ -23,15 +23,15 @@ export function ChartThumbnail({ chart }: ChartThumbnailProps) {
   
   return (
     <div key={chartKey} style={{ width: "100%", height: "100%" }}>
-      {chart.type === "LINE" && <LineChartThumbnail chart={chart as any} />}
-      {chart.type === "BOX" && <BoxChartThumbnail chart={chart as any} />}
-      {chart.type === "AREA" && <AreaChartThumbnail chart={chart as any} />}
-      {chart.type === "BAR" && <BarChartThumbnail chart={chart as any} />}
-      {chart.type === "PIE" && <PieChartThumbnail chart={chart as any} />}
-      {chart.type === "RADAR" && <RadarChartThumbnail chart={chart as any} />}
-      {chart.type === "SCATTER" && <ScatterChartThumbnail chart={chart as any} />}
-      {chart.type === "HISTOGRAM" && <HistogramChartThumbnail chart={chart as any} />}
-      {chart.type === "WATERFALL" && <WaterfallChartThumbnail chart={chart as any} />}
+      {chart.type === "LINE" && <LineChartThumbnail chart={chart} />}
+      {chart.type === "BOX" && <BoxChartThumbnail chart={chart} />}
+      {chart.type === "AREA" && <AreaChartThumbnail chart={chart} />}
+      {chart.type === "BAR" && <BarChartThumbnail chart={chart} />}
+      {chart.type === "PIE" && <PieChartThumbnail chart={chart} />}
+      {chart.type === "RADAR" && <RadarChartThumbnail chart={chart} />}
+      {chart.type === "SCATTER" && <ScatterChartThumbnail chart={chart} />}
+      {chart.type === "HISTOGRAM" && <HistogramChartThumbnail chart={chart} />}
+      {chart.type === "WATERFALL" && <WaterfallChartThumbnail chart={chart} />}
     </div>
   );
 }

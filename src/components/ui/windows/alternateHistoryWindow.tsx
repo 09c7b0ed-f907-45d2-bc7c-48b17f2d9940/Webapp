@@ -1,21 +1,17 @@
 'use client';
 
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChatStore } from "@/store/useChatStore";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 // import { ScrollArea } from "@radix-ui/react-scroll-area";
 import type { ChartDTO } from "@/models/dto/charts";
-import type { VisualizationResponseDTO } from "@/models/dto/response";
+import { isVisualizationResponseDTO, type VisualizationResponseDTO } from "@/models/dto/response";
 import clsx from "clsx";
 import { useTranslation } from 'react-i18next';
 import '@/i18n';
 import { ChartThumbnail } from "@/components/ui/chart-thumbnail";
 import { useThread } from "@/components/ThreadContext";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "../tooltip";
-
-type HorizontalScrollListProps = {
-  children: ReactNode
-}
 
 export default function AlternateHistoryWindow() {
   const { currentThreadId } = useThread();
@@ -46,12 +42,9 @@ export default function AlternateHistoryWindow() {
         const data = await res.json();
         const visualizations: VisualizationResponseDTO[] = [];
         
-        (data.history || []).forEach((item: any) => {
-          if (item.custom && typeof item.custom === "object") {
-            const viz = item.custom as VisualizationResponseDTO;
-            if (viz?.charts && Array.isArray(viz.charts) && viz.schema_version === 1) {
-              visualizations.push(viz);
-            }
+        (data.history || []).forEach((item: { custom?: unknown }) => {
+          if (isVisualizationResponseDTO(item.custom)) {
+            visualizations.push(item.custom);
           }
         });
 
@@ -109,10 +102,11 @@ export default function AlternateHistoryWindow() {
       }
     };
 
+    const observedElement = containerRef.current;
     let resizeObserver: ResizeObserver | null = null;
-    if (containerRef.current) {
+    if (observedElement) {
       resizeObserver = new ResizeObserver(updateDimensions);
-      resizeObserver.observe(containerRef.current);
+      resizeObserver.observe(observedElement);
     }
     updateDimensions();
 
@@ -120,8 +114,8 @@ export default function AlternateHistoryWindow() {
 
     return () => {
       window.removeEventListener("resize", updateDimensions);
-      if (resizeObserver && containerRef.current) {
-        resizeObserver.unobserve(containerRef.current);
+      if (resizeObserver && observedElement) {
+        resizeObserver.unobserve(observedElement);
       }
     };
   }, []);
@@ -185,7 +179,7 @@ export default function AlternateHistoryWindow() {
                                 </div>
                               </div>
                               <div className="p-4 text-sm flex flex-col flex-shrink-0 flex-grow-0">
-                                <div className="font-semibold truncate">{(item as any).metadata?.title ?? 'Untitled'}</div>
+                                <div className="font-semibold truncate">{item.metadata?.title ?? 'Untitled'}</div>
                                 <div className="text-xs text-muted-foreground truncate">
                                   {item.type === "BOX" && t('visualization.type.box')}
                                   {item.type === "LINE" && t('visualization.type.line')}
@@ -201,8 +195,8 @@ export default function AlternateHistoryWindow() {
                         </TooltipTrigger>
                         <TooltipContent>
                           <div className="flex flex-col gap-1 ">
-                            <div className="font-semibold">{(item as any).metadata?.title ?? 'Untitled'}</div>
-                            <div className="text-xs">{(item as any).metadata?.description ?? 'None'}</div>
+                            <div className="font-semibold">{item.metadata?.title ?? 'Untitled'}</div>
+                            <div className="text-xs">{item.metadata?.description ?? 'None'}</div>
                           </div>
                         </TooltipContent>
                       </Tooltip>

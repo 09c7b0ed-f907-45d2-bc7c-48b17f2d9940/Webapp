@@ -3,11 +3,10 @@
 import * as React from "react"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, Loader2 } from "lucide-react"
+import { Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import "@/i18n"
 import { SendIcon } from "./icons/send-icon"
-import { cn } from "@/lib/utils"
 
 interface ChatInputProps {
   onSubmit: (message: string) => Promise<void> | void

@@ -57,10 +57,11 @@ export default function HistoryWindow() {
       }
     };
 
+    const observedElement = containerRef.current;
     let resizeObserver: ResizeObserver | null = null;
-    if (containerRef.current) {
+    if (observedElement) {
       resizeObserver = new ResizeObserver(updateCardsPerView);
-      resizeObserver.observe(containerRef.current);
+      resizeObserver.observe(observedElement);
     }
     updateCardsPerView();
 
@@ -68,8 +69,8 @@ export default function HistoryWindow() {
 
     return () => {
       window.removeEventListener("resize", updateCardsPerView);
-      if (resizeObserver && containerRef.current) {
-        resizeObserver.unobserve(containerRef.current);
+      if (resizeObserver && observedElement) {
+        resizeObserver.unobserve(observedElement);
       }
     };
   }, []);
@@ -115,7 +116,7 @@ export default function HistoryWindow() {
                   >
                     <Card className="w-full h-full flex flex-col justify-center">
                       <CardContent className="p-4 text-sm flex flex-col justify-center h-full">
-                        <div className="font-semibold truncate">{(item as any).metadata?.title ?? ''}</div>
+                        <div className="font-semibold truncate">{item.metadata?.title ?? ''}</div>
                         <div className="text-xs text-muted-foreground truncate">
                           {item.type === "BOX" && t('visualization.type.box')}
                           {item.type === "LINE" && t('visualization.type.line')}
