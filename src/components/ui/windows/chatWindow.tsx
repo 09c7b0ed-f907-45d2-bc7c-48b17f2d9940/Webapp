@@ -69,15 +69,10 @@ type HistoryApiResponse = {
 
 const PLAN_CHAT_DEBUG_MODE = process.env.NODE_ENV === "development";
 
-function formatPlanDebugMessage(plan: VisualizationPlanMessageDTO, traceId: string | null): string {
-  const normalizedPlan: VisualizationPlanMessageDTO = {
-    ...plan,
-    ...(traceId && !plan.trace_id ? { trace_id: traceId } : {}),
-  };
-
+function formatPlanDebugMessage(plan: VisualizationPlanMessageDTO): string {
   let payload = "";
   try {
-    payload = JSON.stringify(normalizedPlan, null, 2);
+    payload = JSON.stringify(plan, null, 2);
   } catch {
     payload = "{\n  \"error\": \"Failed to serialize visualization plan payload\"\n}";
   }
@@ -187,7 +182,7 @@ export default function ChatWindow() {
         id: crypto.randomUUID(),
         sender: "other",
         kind: "plan",
-        content: formatPlanDebugMessage(plan, traceId),
+        content: formatPlanDebugMessage(plan),
         debug: {
           source: "visualization-plan",
         },
