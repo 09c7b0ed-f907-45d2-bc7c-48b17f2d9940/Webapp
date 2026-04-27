@@ -3,12 +3,46 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRasaUrlForRequest } from "@/lib/rasaConfig";
 import { putUserAccessToken } from "@/lib/userTokenVault";
 import { buildRasaSenderId } from "@/lib/rasaSender";
+import { publishToSender } from "@/lib/sseBus";
 import { touchThreadForUser } from "@/lib/threadRegistryStore";
 import { createTraceLogContext, readTraceId, withTraceIdHeaders } from "@/lib/traceId";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 600;
+
+function publishRasaStreamChunk(senderId: string, chunk: string): number {
+  let published = 0;
+  const lines = chunk.split(/\r?\n/);
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    try {
+      const payload = JSON.parse(trimmed) as unknown;
+
+      if (Array.isArray(payload)) {
+        for (const item of payload) {
+          publishToSender(senderId, item);
+          published += 1;
+        }
+        continue;
+      }
+
+      publishToSender(senderId, payload);
+      published += 1;
+    } catch (error) {
+      console.warn("[rasa] Failed to parse upstream message chunk", {
+        senderId,
+        line: trimmed,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return published;
+}
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req });
@@ -70,13 +104,6 @@ export async function POST(req: NextRequest) {
     rasaUrl: apiUrl,
   }));
 
-  const controller = new AbortController();
-  const clientSignal: AbortSignal | undefined = (req as unknown as { signal?: AbortSignal }).signal;
-  if (clientSignal) {
-    const onAbort = () => controller.abort();
-    clientSignal.addEventListener("abort", onAbort, { once: true });
-  }
-
   const rasaStreamRes = await fetch(`${apiUrl}/webhooks/rest/webhook?stream=true`, {
     method: "POST",
     headers: {
@@ -94,7 +121,6 @@ export async function POST(req: NextRequest) {
           }
         : {}),
     }),
-    signal: controller.signal,
   });
 
   console.info("[rasa] Received upstream stream response", createTraceLogContext(traceId, {
@@ -102,11 +128,56 @@ export async function POST(req: NextRequest) {
     status: rasaStreamRes.status,
   }));
 
-  return new Response(rasaStreamRes.body, {
-    status: rasaStreamRes.status,
-    headers: withTraceIdHeaders({
-      "Content-Type": "application/x-ndjson; charset=utf-8",
-      "Cache-Control": "no-store",
-    }, traceId),
-  });
+  if (!rasaStreamRes.ok) {
+    const errorText = await rasaStreamRes.text();
+    console.error("[rasa] Upstream webhook request failed", createTraceLogContext(traceId, {
+      senderId,
+      status: rasaStreamRes.status,
+      response: errorText,
+    }));
+
+    return new NextResponse(errorText || "Rasa request failed", {
+      status: rasaStreamRes.status,
+      headers: withTraceIdHeaders(undefined, traceId),
+    });
+  }
+
+  let publishedMessages = 0;
+  const reader = rasaStreamRes.body?.getReader();
+
+  if (reader) {
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() ?? "";
+
+      publishedMessages += publishRasaStreamChunk(senderId, lines.join("\n"));
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      publishedMessages += publishRasaStreamChunk(senderId, buffer);
+    }
+  } else {
+    const bodyText = await rasaStreamRes.text();
+    if (bodyText.trim()) {
+      publishedMessages += publishRasaStreamChunk(senderId, bodyText);
+    }
+  }
+
+  console.info("[rasa] Published upstream messages to SSE", createTraceLogContext(traceId, {
+    senderId,
+    publishedMessages,
+  }));
+
+  return NextResponse.json(
+    { ok: true, senderId, publishedMessages },
+    {headers: withTraceIdHeaders(undefined, traceId)}
+  );
 }

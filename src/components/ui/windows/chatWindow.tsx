@@ -72,6 +72,93 @@ type HistoryApiResponse = {
 };
 
 const PLAN_CHAT_DEBUG_MODE = process.env.NODE_ENV === "development";
+const INCOMING_MESSAGE_TTL_MS = 5000;
+
+function createPlanDebugKey(plan: VisualizationPlanMessageDTO, traceId: string | null): string | null {
+  if (traceId) {
+    return `trace:${traceId}`;
+  }
+
+  try {
+    return `plan:${JSON.stringify(plan.plan)}`;
+  } catch {
+    return null;
+  }
+}
+
+function stableSerialize(value: unknown): string {
+  if (value === null || value === undefined) {
+    return String(value);
+  }
+
+  if (typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((entry) => stableSerialize(entry)).join(",")}]`;
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>).sort(([left], [right]) =>
+    left.localeCompare(right)
+  );
+
+  return `{${entries
+    .map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerialize(entryValue)}`)
+    .join(",")}}`;
+}
+
+function createMessageKey(message: Message): string {
+  return stableSerialize({
+    sender: message.sender,
+    kind: message.kind ?? "normal",
+    content: message.content,
+    feedbackKey: message.feedbackKey ?? null,
+    buttons: message.buttons ?? null,
+  });
+}
+
+function mergeMessages(historyMessages: Message[], liveMessages: Message[]): Message[] {
+  const merged = [...historyMessages];
+  const seen = new Set(historyMessages.map((message) => createMessageKey(message)));
+
+  for (const message of liveMessages) {
+    const key = createMessageKey(message);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(message);
+  }
+
+  return merged;
+}
+
+function createIncomingPayloadKey(payload: {
+  text?: unknown;
+  custom?: unknown;
+  type?: unknown;
+  buttons?: unknown;
+  progress?: unknown;
+}): string | null {
+  const normalized = {
+    text: typeof payload.text === "string" ? payload.text : null,
+    custom: payload.custom ?? null,
+    type: typeof payload.type === "string" ? payload.type : null,
+    buttons: Array.isArray(payload.buttons) ? payload.buttons : null,
+    progress: typeof payload.progress === "string" ? payload.progress : null,
+  };
+
+  if (
+    normalized.text === null &&
+    normalized.custom === null &&
+    normalized.type === null &&
+    normalized.buttons === null &&
+    normalized.progress === null
+  ) {
+    return null;
+  }
+
+  return stableSerialize(normalized);
+}
 
 function formatPlanDebugMessage(plan: VisualizationPlanMessageDTO, traceId: string | null): string {
   const normalizedPlan: VisualizationPlanMessageDTO = {
@@ -89,19 +176,56 @@ function formatPlanDebugMessage(plan: VisualizationPlanMessageDTO, traceId: stri
   return ["[dev] Visualization plan payload", payload].join("\n");
 }
 
-function mapHistoryItems(items: unknown[]): { mapped: Message[]; customPayloads: unknown[] } {
+function createPlanDebugEntry(
+  plan: VisualizationPlanMessageDTO,
+  traceId: string | null,
+  seenPlanKeys: Set<string>
+): Message | null {
+  if (!PLAN_CHAT_DEBUG_MODE) {
+    return null;
+  }
+
+  const planKey = createPlanDebugKey(plan, traceId);
+  if (!planKey || seenPlanKeys.has(planKey)) {
+    return null;
+  }
+
+  seenPlanKeys.add(planKey);
+
+  return {
+    id: crypto.randomUUID(),
+    sender: "other",
+    kind: "plan",
+    content: formatPlanDebugMessage(plan, traceId),
+    debug: {
+      source: "visualization-plan",
+    },
+  };
+}
+
+function mapHistoryItems(items: unknown[], seenPlanKeys: Set<string>): { mapped: Message[]; customPayloads: unknown[] } {
   const customPayloads: unknown[] = [];
   const mapped = items.flatMap((item): Message[] => {
     const candidate = item as HistoryResponseItem;
     if (!candidate || (candidate.role !== "user" && candidate.role !== "assistant")) return [];
 
+    const messages: Message[] = [];
+
     if (candidate.custom && typeof candidate.custom === "object") {
       customPayloads.push(candidate.custom);
+
+      if (candidate.role === "assistant" && isVisualizationPlanMessageDTO(candidate.custom)) {
+        const traceId = resolveVisualizationTraceId(candidate.custom);
+        const planMessage = createPlanDebugEntry(candidate.custom, traceId, seenPlanKeys);
+        if (planMessage) {
+          messages.push(planMessage);
+        }
+      }
     }
 
-    if (typeof candidate.text !== "string") return [];
+    if (typeof candidate.text !== "string") return messages;
 
-    return [{
+    messages.unshift({
       id: crypto.randomUUID(),
       sender: candidate.role === "user" ? "user" : "other",
       content: candidate.text,
@@ -111,13 +235,15 @@ function mapHistoryItems(items: unknown[]): { mapped: Message[]; customPayloads:
           ? (candidate.feedback as FeedbackPayload)
           : undefined,
       debug: candidate.debug && typeof candidate.debug === "object" ? candidate.debug as Message["debug"] : undefined,
-    }];
+    });
+
+    return messages;
   });
 
   return { mapped, customPayloads };
 }
 
-async function fetchThreadHistory(threadId: number): Promise<{
+async function fetchThreadHistory(threadId: number, seenPlanKeys: Set<string>): Promise<{
   mapped: Message[];
   customPayloads: unknown[];
   error: string | null;
@@ -144,7 +270,7 @@ async function fetchThreadHistory(threadId: number): Promise<{
     };
   }
 
-  const { mapped, customPayloads } = mapHistoryItems(Array.isArray(data?.history) ? data.history : []);
+  const { mapped, customPayloads } = mapHistoryItems(Array.isArray(data?.history) ? data.history : [], seenPlanKeys);
 
   return {
     mapped,
@@ -160,46 +286,21 @@ export default function ChatWindow() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [isWaitingForBot, setIsWaitingForBot] = useState(false);
-  const hydrationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const seenPlanMessageKeysRef = useRef<Set<string>>(new Set());
+  const seenIncomingPayloadKeysRef = useRef<Map<string, number>>(new Map());
   const language = useSettingsStore((s) => s.language);
   const { t } = useTranslation('common');
 
   const emitPlanDebugMessage = useCallback((plan: VisualizationPlanMessageDTO, traceId: string | null) => {
-    if (!PLAN_CHAT_DEBUG_MODE) {
+    const planMessage = createPlanDebugEntry(plan, traceId, seenPlanMessageKeysRef.current);
+    if (!planMessage) {
       return;
     }
 
-    const planKey = traceId
-      ? `trace:${traceId}`
-      : (() => {
-          try {
-            return `plan:${JSON.stringify(plan.plan)}`;
-          } catch {
-            return null;
-          }
-        })();
-
-    if (!planKey || seenPlanMessageKeysRef.current.has(planKey)) {
-      return;
-    }
-
-    seenPlanMessageKeysRef.current.add(planKey);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        sender: "other",
-        kind: "plan",
-        content: formatPlanDebugMessage(plan, traceId),
-        debug: {
-          source: "visualization-plan",
-        },
-      },
-    ]);
+    setMessages((prev) => [...prev, planMessage]);
   }, []);
 
-  const applyVisualizationFromCustom = useCallback((custom: unknown) => {
+  const applyVisualizationFromCustom = useCallback((custom: unknown, options?: { emitPlanMessage?: boolean }) => {
     const { setVisualization, addToHistory, setSelectedChartIndex, rememberVisualizationPlan } = useChatStore.getState();
 
     if (isVisualizationPlanMessageDTO(custom)) {
@@ -207,7 +308,9 @@ export default function ChatWindow() {
       if (traceId) {
         rememberVisualizationPlan(traceId, custom);
       }
-      emitPlanDebugMessage(custom, traceId);
+      if (options?.emitPlanMessage !== false) {
+        emitPlanDebugMessage(custom, traceId);
+      }
       return;
     }
 
@@ -218,140 +321,115 @@ export default function ChatWindow() {
     }
   }, [emitPlanDebugMessage]);
 
-  const hydrateFromHistory = useCallback(async () => {
-    if (!currentThreadId) return;
+  const addMessage = useCallback((payload: unknown) => {
+  const obj = payload as {
+    text?: unknown;
+    custom?: unknown;
+    type?: unknown;
+    buttons?: unknown;
+    progress?: unknown;
+  } | null;
 
-    try {
-      const { mapped, customPayloads, error, status } = await fetchThreadHistory(currentThreadId);
+  if (!obj || typeof obj !== "object") return;
 
-      if (error && status !== 404) {
-        console.warn("Silent tracker hydration degraded:", error);
+  if (obj.type === "connected") return;
+
+  const payloadKey = createIncomingPayloadKey(obj);
+  if (payloadKey) {
+    const now = Date.now();
+
+    for (const [key, timestamp] of seenIncomingPayloadKeysRef.current.entries()) {
+      if (now - timestamp > INCOMING_MESSAGE_TTL_MS) {
+        seenIncomingPayloadKeysRef.current.delete(key);
       }
-
-      setMessages((prev) => {
-        const carryOver = prev.filter((m) => m.kind === "progress" || m.kind === "plan");
-        return carryOver.length > 0 ? [...mapped, ...carryOver] : mapped;
-      });
-      for (const customPayload of customPayloads) {
-        applyVisualizationFromCustom(customPayload);
-      }
-    } catch (err) {
-      console.error("Silent tracker hydration failed:", err);
-    }
-  }, [applyVisualizationFromCustom, currentThreadId]);
-
-  const scheduleHydration = useCallback(() => {
-    if (hydrationTimerRef.current) {
-      clearTimeout(hydrationTimerRef.current);
     }
 
-    hydrationTimerRef.current = setTimeout(() => {
-      hydrateFromHistory().catch((err) => {
-        console.error("Failed to hydrate tracker metadata:", err);
-      });
-    }, 900);
-  }, [hydrateFromHistory]);
-
-  const handleCustomPayload = useCallback((custom: unknown) => {
-    const obj = custom as { progress?: unknown } | null;
-    const progressText =
-      obj && typeof obj === "object" && typeof obj.progress === "string"
-        ? (obj.progress as string)
-        : null;
-
-    if (progressText) {
-      setIsWaitingForBot(true);
-      // Show or update a single temporary progress bubble.
-      setMessages((prev) => {
-        const base = prev.filter((m) => m.kind !== "progress");
-        return [
-          ...base,
-          {
-            id: crypto.randomUUID(),
-            sender: "other",
-            content: progressText,
-            kind: "progress",
-          },
-        ];
-      });
+    const previousSeenAt = seenIncomingPayloadKeysRef.current.get(payloadKey);
+    if (typeof previousSeenAt === "number" && now - previousSeenAt <= INCOMING_MESSAGE_TTL_MS) {
       return;
     }
 
-    setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
-    setIsWaitingForBot(false);
-    applyVisualizationFromCustom(custom);
-  }, [applyVisualizationFromCustom]);
+    seenIncomingPayloadKeysRef.current.set(payloadKey, now);
+  }
 
-  const handleIncomingPayload = useCallback((payload: unknown) => {
-    const obj = payload as { text?: unknown; custom?: unknown; type?: unknown; buttons?: unknown } | null;
-    if (!obj || typeof obj !== "object") return;
+  // ---- PROGRESS ----
+  const progressText =
+    typeof obj.progress === "string"
+      ? obj.progress
+      : (obj.custom &&
+         typeof obj.custom === "object" &&
+         typeof (obj.custom as any).progress === "string"
+        ? (obj.custom as any).progress
+        : null);
 
-    if (obj.type === "connected") {
-      return;
-    }
+  if (progressText) {
+    setIsWaitingForBot(true);
 
-    if (typeof obj.text === "string" && obj.text.length > 0) {
-      setIsWaitingForBot(false);
-      setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
-      const botMsg: Message = {
-        id: crypto.randomUUID(),
-        sender: "other",
-        content: obj.text,
-        debug: {
-          pending: true,
-          source: "live-stream",
+    setMessages((prev) => {
+      const base = prev.filter((m) => m.kind !== "progress");
+      return [
+        ...base,
+        {
+          id: crypto.randomUUID(),
+          sender: "other",
+          content: progressText,
+          kind: "progress",
         },
-      };
+      ];
+    });
 
-      // Add buttons if they exist and are in the correct format
-      if (Array.isArray(obj.buttons)) {
-        const buttons = obj.buttons.filter(
+    return;
+  }
+
+  setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
+  setIsWaitingForBot(false);
+
+  if (typeof obj.text === "string" && obj.text.length > 0) {
+    const botMsg: Message = {
+      id: crypto.randomUUID(),
+      sender: "other",
+      content: obj.text,
+    };
+
+    setIsWaitingForBot(false);
+
+    if (Array.isArray(obj.buttons)) {
+      const buttons = obj.buttons
+        .filter(
           (btn: any) =>
-            btn && typeof btn === "object" &&
+            btn &&
+            typeof btn === "object" &&
             typeof btn.title === "string" &&
             typeof btn.payload === "string"
-        ).map((btn: any) => ({
+        )
+        .map((btn: any) => ({
           title: btn.title,
           payload: btn.payload,
         }));
-        
-        if (buttons.length > 0) {
-          botMsg.buttons = buttons;
-        }
-      }
 
-      setMessages((prev) => [...prev, botMsg]);
-      scheduleHydration();
-    }
-
-    if (obj.custom) {
-      const customObj = obj.custom as { progress?: unknown } | null;
-      const isProgressUpdate =
-        !!customObj &&
-        typeof customObj === "object" &&
-        typeof customObj.progress === "string";
-
-      handleCustomPayload(obj.custom);
-      if (!isProgressUpdate) {
-        scheduleHydration();
+      if (buttons.length > 0) {
+        botMsg.buttons = buttons;
       }
     }
-  }, [handleCustomPayload, scheduleHydration]);
+
+    setMessages((prev) => [...prev, botMsg]);
+  }
+
+  if (obj.custom) {
+    setMessages((prev) => prev.filter((m) => m.kind !== "progress"));
+    applyVisualizationFromCustom(obj.custom);
+  }
+ 
+}, [applyVisualizationFromCustom]);
 
   const handleButtonClick = async (buttonPayload: string) => {
     // Send a formatted message with the button payload
-    await sendMessage(`Generate a Graph of my Hospital's ${buttonPayload}`);
+    await sendMessage(`${buttonPayload}`);
   };
- useEffect(() => {
-    return () => {
-      if (hydrationTimerRef.current) {
-        clearTimeout(hydrationTimerRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     seenPlanMessageKeysRef.current.clear();
+    seenIncomingPayloadKeysRef.current.clear();
 
     let cancelled = false;
 
@@ -362,23 +440,22 @@ export default function ChatWindow() {
     }
 
     const threadId = currentThreadId;
+    setMessages([]);
 
     async function fetchMessages() {
       setLoading(true);
       try {
-        const { mapped, customPayloads, error, status } = await fetchThreadHistory(threadId);
+        const { mapped, customPayloads, error, status } = await fetchThreadHistory(threadId, seenPlanMessageKeysRef.current);
 
         if (!cancelled) {
+          setIsWaitingForBot(false);
           if (error && status !== 404) {
             console.warn("History request degraded:", error);
           }
 
-          setMessages((prev) => {
-            const carryOver = prev.filter((m) => m.kind === "progress" || m.kind === "plan");
-            return carryOver.length > 0 ? [...mapped, ...carryOver] : mapped;
-          });
+          setMessages((prev) => mergeMessages(mapped, prev));
           for (const customPayload of customPayloads) {
-            applyVisualizationFromCustom(customPayload);
+            applyVisualizationFromCustom(customPayload, { emitPlanMessage: false });
           }
         }
       } catch (err) {
@@ -408,7 +485,7 @@ export default function ChatWindow() {
     es.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data ?? "null");
-        handleIncomingPayload(data);
+        addMessage(data);
       } catch (err) {
         console.error("SSE message parse error:", err);
       }
@@ -421,103 +498,62 @@ export default function ChatWindow() {
     return () => {
       es.close();
     };
-  }, [currentThreadId, handleIncomingPayload]);
+  }, [currentThreadId]);
 
   const sendMessage = async (msg: string) => {
-    if (!currentThreadId) {
-      return;
-    }
+  if (!currentThreadId) return;
 
-    window.dispatchEvent(
-      new CustomEvent("thread-activity", {
-        detail: { threadId: currentThreadId },
-      })
-    );
+  window.dispatchEvent(
+    new CustomEvent("thread-activity", {
+      detail: { threadId: currentThreadId },
+    })
+  );
 
-    setIsWaitingForBot(true);
+  setIsWaitingForBot(true);
 
-    const userMsg: Message = {
+  const userMsg: Message = {
+    id: crypto.randomUUID(),
+    sender: "user",
+    content: msg,
+    debug: {
+      pending: true,
+      source: "live-input",
+    },
+  };
+
+  setMessages((prev) => [...prev, userMsg]);
+
+  try {
+    const res = await fetch("/api/rasa", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept-Language": language,
+      },
+      body: JSON.stringify({ message: msg, threadId: currentThreadId }),
+      credentials: "include",
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+  } catch (err) {
+    setIsWaitingForBot(false);
+
+    console.error("/api/rasa error:", err);
+
+    const errorMsg: Message = {
       id: crypto.randomUUID(),
-      sender: "user",
-      content: msg,
+      sender: "other",
+      content: t("chat.error"),
       debug: {
         pending: true,
-        source: "live-input",
+        source: "live-error",
       },
     };
 
-    setMessages((prev) => [...prev, userMsg]);
-
-    try {
-      const res = await fetch("/api/rasa", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept-Language": language,
-        },
-        body: JSON.stringify({ message: msg, threadId: currentThreadId }),
-        credentials: "include",
-      });
-
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-      const contentType = res.headers.get("content-type") || "";
-      if (contentType.includes("application/x-ndjson") || contentType.includes("application/json")) {
-        const reader = res.body?.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-
-        if (reader) {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buf += decoder.decode(value, { stream: true });
-            const lines = buf.split(/\r?\n/);
-            buf = lines.pop() || "";
-            for (const line of lines) {
-              if (!line.trim()) continue;
-              try {
-                const obj = JSON.parse(line);
-                handleIncomingPayload(obj);
-              } catch (e) {
-                console.warn("NDJSON parse error:", e);
-              }
-            }
-          }
-        }
-      } else {
-        const data = await res.json();
-        if (data.reply !== "") {
-          setIsWaitingForBot(false);
-          const botMsg: Message = {
-            id: crypto.randomUUID(),
-            sender: "other",
-            content: data.reply,
-            debug: {
-              pending: true,
-              source: "live-response",
-            },
-          };
-          setMessages((prev) => [...prev, botMsg]);
-        }
-        applyVisualizationFromCustom(data.custom);
-      }
-      scheduleHydration();
-    } catch (err) {
-      setIsWaitingForBot(false);
-      console.error("/api/rasa error:", err);
-      const errorMsg: Message = {
-        id: crypto.randomUUID(),
-        sender: "other",
-        content: t('chat.error'),
-        debug: {
-          pending: true,
-          source: "live-error",
-        },
-      };
-      setMessages((prev) => [...prev, errorMsg]);
-    }
-  };
+    setMessages((prev) => [...prev, errorMsg]);
+  }
+};
 
   return (
     <div className=" flex flex-col h-full">

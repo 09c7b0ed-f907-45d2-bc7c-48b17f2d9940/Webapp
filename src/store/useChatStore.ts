@@ -8,18 +8,22 @@ interface ChatStore {
   visualization: VisualizationResponseDTO | null;
   setVisualization: (v: VisualizationResponseDTO | null) => void;
   history: VisualizationResponseDTO[];
+  setHistory: (history: VisualizationResponseDTO[]) => void;
+  clearHistory: () => void;
   addToHistory: (v: VisualizationResponseDTO) => void;
   visualizationPlans: Record<string, VisualizationPlanMessageDTO>;
   rememberVisualizationPlan: (traceId: string, plan: VisualizationPlanMessageDTO) => void;
 
   selectedChartIndex: number | null;
-  setSelectedChartIndex: (i: number) => void;
+  setSelectedChartIndex: (i: number | null) => void;
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
   visualization: null,
   setVisualization: (v) => set({ visualization: v }),
   history: [],
+  setHistory: (history) => set({ history }),
+  clearHistory: () => set({ history: [] }),
   addToHistory: (v) => set((state) => ({ history: [v, ...state.history] })),
   visualizationPlans: {},
   rememberVisualizationPlan: (traceId, plan) =>

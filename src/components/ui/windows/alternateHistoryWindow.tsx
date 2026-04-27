@@ -15,21 +15,28 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "../too
 
 export default function AlternateHistoryWindow() {
   const { currentThreadId } = useThread();
+  const history = useChatStore((s) => s.history);
+  const setHistory = useChatStore((s) => s.setHistory);
+  const clearHistory = useChatStore((s) => s.clearHistory);
   const setVisualization = useChatStore((s) => s.setVisualization);
   const setSelectedChartIndex = useChatStore((s) => s.setSelectedChartIndex);
   const selectedChartIndex = useChatStore((s) => s.selectedChartIndex);
   const visualization = useChatStore((s) => s.visualization);
   const { t } = useTranslation('common');
 
-  const [displayHistory, setDisplayHistory] = useState<VisualizationResponseDTO[]>([]);
   const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Fetch visualization history from API
   useEffect(() => {
     if (!currentThreadId) {
-      setDisplayHistory([]);
+      clearHistory();
+      setVisualization(null);
+      setSelectedChartIndex(null);
       return;
     }
+
+    clearHistory();
+    setSelectedChartIndex(null);
 
     const fetchVisualizationHistory = async () => {
       try {
@@ -48,42 +55,42 @@ export default function AlternateHistoryWindow() {
           }
         });
 
-        setDisplayHistory(visualizations);
+        setHistory(visualizations);
       } catch (err) {
         console.error("Failed to fetch visualization history:", err);
       }
     };
 
     fetchVisualizationHistory();
-  }, [currentThreadId]);
+  }, [clearHistory, currentThreadId, setHistory, setSelectedChartIndex, setVisualization]);
 
   // Clear refs when display history changes
   useEffect(() => {
     chartRefs.current = [];
-  }, [displayHistory]);
+  }, [history]);
 
   // Auto-select first chart when history is updated
   useEffect(() => {
-    if (displayHistory.length > 0) {
-      const firstViz = displayHistory[0];
+    if (history.length > 0 && !visualization) {
+      const firstViz = history[0];
       if (firstViz?.charts && firstViz.charts.length > 0) {
         setVisualization(firstViz);
         setSelectedChartIndex(0);
       }
     }
-  }, [displayHistory, setVisualization, setSelectedChartIndex]);
+  }, [history, setSelectedChartIndex, setVisualization, visualization]);
 
   // Scroll selected chart into view
   useEffect(() => {
     if (selectedChartIndex !== null && visualization) {
-      const historyIndex = displayHistory.findIndex((h) => h === visualization);
+      const historyIndex = history.findIndex((h) => h === visualization);
       const refKey = `${historyIndex}-${selectedChartIndex}`;
       const ref = chartRefs.current.find((el) => el?.dataset.refkey === refKey);
       if (ref) {
         ref.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
       }
     }
-  }, [selectedChartIndex, visualization, displayHistory]);
+  }, [history, selectedChartIndex, visualization]);
 
   const handleClick = (viz: VisualizationResponseDTO, chartIndex: number) => {
     setVisualization(viz);
@@ -147,7 +154,7 @@ export default function AlternateHistoryWindow() {
       >
         <div ref={scrollRef}className="flex flex-1 flex-row gap-2 p-2">
           <TooltipProvider>
-            {displayHistory.map((viz, historyIndex) => {
+            {history.map((viz, historyIndex) => {
               const charts = (viz.charts ?? []) as ChartDTO[];
                 return charts.map((item, chartIndex) => {
                   const refKey = `${historyIndex}-${chartIndex}`;
