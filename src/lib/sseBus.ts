@@ -1,9 +1,58 @@
 type Subscriber = (payload: unknown) => void;
 
-const subscribersBySender = new Map<string, Set<Subscriber>>();
+type BufferedPayload = {
+  payload: unknown;
+  timestamp: number;
+};
+
+const globalForSseBus = globalThis as unknown as {
+  sseSubscribersBySender?: Map<string, Set<Subscriber>>;
+  sseBufferedPayloadsBySender?: Map<string, BufferedPayload[]>;
+};
+
+const subscribersBySender = globalForSseBus.sseSubscribersBySender ?? new Map<string, Set<Subscriber>>();
+const bufferedPayloadsBySender =
+  globalForSseBus.sseBufferedPayloadsBySender ?? new Map<string, BufferedPayload[]>();
+
+globalForSseBus.sseSubscribersBySender = subscribersBySender;
+globalForSseBus.sseBufferedPayloadsBySender = bufferedPayloadsBySender;
+const MAX_BUFFERED_PAYLOADS_PER_SENDER = 20;
+const BUFFER_TTL_MS = 15000;
 
 function normalizeSenderId(senderId: string): string {
   return String(senderId ?? "").trim();
+}
+
+function now(): number {
+  return Date.now();
+}
+
+function pruneBufferedPayloads(senderId: string): BufferedPayload[] {
+  const key = normalizeSenderId(senderId);
+  if (!key) return [];
+
+  const cutoff = now() - BUFFER_TTL_MS;
+  const current = bufferedPayloadsBySender.get(key) ?? [];
+  const next = current.filter((entry) => entry.timestamp >= cutoff);
+
+  if (next.length > 0) {
+    bufferedPayloadsBySender.set(key, next);
+  } else {
+    bufferedPayloadsBySender.delete(key);
+  }
+
+  return next;
+}
+
+function bufferPayload(senderId: string, payload: unknown): void {
+  const key = normalizeSenderId(senderId);
+  if (!key) return;
+
+  const next = [...pruneBufferedPayloads(key), { payload, timestamp: now() }].slice(
+    -MAX_BUFFERED_PAYLOADS_PER_SENDER
+  );
+
+  bufferedPayloadsBySender.set(key, next);
 }
 
 export function addSubscriberForSender(senderId: string, subscriber: Subscriber): () => void {
@@ -14,6 +63,16 @@ export function addSubscriberForSender(senderId: string, subscriber: Subscriber)
     subscribersBySender.set(key, set);
   }
   set.add(subscriber);
+
+  const bufferedEntries = pruneBufferedPayloads(key);
+
+  for (const entry of bufferedEntries) {
+    try {
+      subscriber(entry.payload);
+    } catch (err) {
+      console.error("SSE buffered replay error for sender", senderId, err);
+    }
+  }
 
   return () => {
     const current = subscribersBySender.get(key);
@@ -27,6 +86,7 @@ export function addSubscriberForSender(senderId: string, subscriber: Subscriber)
 
 export function publishToSender(senderId: string, payload: unknown): void {
   const key = normalizeSenderId(senderId);
+  bufferPayload(key, payload);
   const set = subscribersBySender.get(key);
   if (!set) return;
   for (const subscriber of set) {

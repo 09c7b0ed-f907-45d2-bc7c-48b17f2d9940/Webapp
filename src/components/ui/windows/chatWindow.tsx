@@ -138,13 +138,21 @@ function createIncomingPayloadKey(payload: {
   type?: unknown;
   buttons?: unknown;
   progress?: unknown;
+  feedbackKey?: unknown;
+  debug?: unknown;
 }): string | null {
+  const debug = payload.debug && typeof payload.debug === "object"
+    ? (payload.debug as { eventIndex?: unknown; source?: unknown })
+    : null;
   const normalized = {
     text: typeof payload.text === "string" ? payload.text : null,
     custom: payload.custom ?? null,
     type: typeof payload.type === "string" ? payload.type : null,
     buttons: Array.isArray(payload.buttons) ? payload.buttons : null,
     progress: typeof payload.progress === "string" ? payload.progress : null,
+    feedbackKey: typeof payload.feedbackKey === "string" ? payload.feedbackKey : null,
+    eventIndex: typeof debug?.eventIndex === "number" ? debug.eventIndex : null,
+    source: typeof debug?.source === "string" ? debug.source : null,
   };
 
   if (
@@ -152,7 +160,10 @@ function createIncomingPayloadKey(payload: {
     normalized.custom === null &&
     normalized.type === null &&
     normalized.buttons === null &&
-    normalized.progress === null
+    normalized.progress === null &&
+    normalized.feedbackKey === null &&
+    normalized.eventIndex === null &&
+    normalized.source === null
   ) {
     return null;
   }
@@ -328,6 +339,9 @@ export default function ChatWindow() {
     type?: unknown;
     buttons?: unknown;
     progress?: unknown;
+    feedbackKey?: unknown;
+    feedback?: unknown;
+    debug?: unknown;
   } | null;
 
   if (!obj || typeof obj !== "object") return;
@@ -352,7 +366,6 @@ export default function ChatWindow() {
     seenIncomingPayloadKeysRef.current.set(payloadKey, now);
   }
 
-  // ---- PROGRESS ----
   const progressText =
     typeof obj.progress === "string"
       ? obj.progress

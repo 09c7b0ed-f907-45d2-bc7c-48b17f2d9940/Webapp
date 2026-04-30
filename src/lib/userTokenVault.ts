@@ -3,8 +3,14 @@ type TokenEntry = {
   expiresAt: number;
 };
 
+const globalForUserTokenVault = globalThis as unknown as {
+  userTokenBySub?: Map<string, TokenEntry>;
+};
+
 const DEFAULT_TTL_MS = Number(process.env.USER_TOKEN_VAULT_TTL_MS ?? 30 * 60 * 1000);
-const tokenBySub = new Map<string, TokenEntry>();
+const tokenBySub = globalForUserTokenVault.userTokenBySub ?? new Map<string, TokenEntry>();
+
+globalForUserTokenVault.userTokenBySub = tokenBySub;
 
 function now(): number {
   return Date.now();
@@ -45,7 +51,7 @@ export function inspectUserAccessTokenLookup(sub: string) {
     fallbackMatch: false,
     exactExpiresAt: exactEntry?.expiresAt ?? null,
     fallbackExpiresAt: null,
-    storage: "in-memory-per-process",
+    storage: "globalThis-per-process",
   };
 }
 

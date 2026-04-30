@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
 
       const keepAlive = setInterval(() => {
         controller.enqueue(encoder.encode(`: keep-alive\n\n`));
-      }, 25000);
+      }, 5000); //reduced from 25s to 10s to keep SSE alive
 
       const cleanup = () => {
         clearInterval(keepAlive);

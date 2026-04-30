@@ -1,7 +1,7 @@
 import { getRasaUrlForRequest } from "@/lib/rasaConfig";
 import { buildRasaSenderId } from "@/lib/rasaSender";
 
-type RasaHistoryEvent = {
+export type RasaHistoryEvent = {
   event: string;
   text?: string;
   parse_data?: {
@@ -16,44 +16,58 @@ type RasaHistoryEvent = {
   policy?: string;
   confidence?: number;
   name?: string;
+  buttons?: unknown;
+};
+
+export type RasaHistoryButton = {
+  title: string;
+  payload: string;
+};
+
+export type RasaHistoryDebug = {
+  eventIndex: number;
+  turnIndex: number;
+  timestamp?: number;
+  source?: string;
+  intentName?: string;
+  intentConfidence?: number;
+  entities?: unknown[];
+  actionName?: string;
+  policyName?: string;
+  policyConfidence?: number;
 };
 
 export type RasaHistoryItem = {
   role: "user" | "assistant";
   text?: string;
   custom?: Record<string, unknown>;
+  buttons?: RasaHistoryButton[];
   feedbackKey?: string;
-  debug?: {
-    eventIndex: number;
-    turnIndex: number;
-    timestamp?: number;
-    source?: string;
-    intentName?: string;
-    intentConfidence?: number;
-    entities?: unknown[];
-    actionName?: string;
-    policyName?: string;
-    policyConfidence?: number;
-  };
+  debug?: RasaHistoryDebug;
 };
 
-export async function fetchRasaHistory(params: {
-  headers: Headers;
-  cookies: Map<string, string>;
-  userSub: string;
-  threadId: number | null;
-  includeDebugMetadata?: boolean;
-}) {
-  const apiUrl = getRasaUrlForRequest(params.headers, params.cookies);
-  if (!apiUrl) {
-    return {
-      history: [] as RasaHistoryItem[],
-      error: "Rasa not configured",
-      status: 500,
-    };
+function normalizeButtons(input: unknown): RasaHistoryButton[] | undefined {
+  if (!Array.isArray(input)) {
+    return undefined;
   }
 
-  const senderId = buildRasaSenderId(params.userSub, params.threadId);
+  const buttons = input
+    .filter(
+      (button): button is { title: string; payload: string } =>
+        !!button &&
+        typeof button === "object" &&
+        typeof (button as { title?: unknown }).title === "string" &&
+        typeof (button as { payload?: unknown }).payload === "string"
+    )
+    .map((button) => ({
+      title: button.title,
+      payload: button.payload,
+    }));
+
+  return buttons.length > 0 ? buttons : undefined;
+}
+
+export async function fetchRasaTrackerEvents(apiUrl: string, senderId: string) {
   const tracker = await fetch(`${apiUrl}/conversations/${senderId}/tracker`, {
     cache: "no-store",
   });
@@ -61,7 +75,7 @@ export async function fetchRasaHistory(params: {
 
   if (!tracker.ok) {
     return {
-      history: [] as RasaHistoryItem[],
+      events: [] as RasaHistoryEvent[],
       error: "Rasa tracker endpoint is unavailable",
       status: tracker.status,
     };
@@ -69,7 +83,7 @@ export async function fetchRasaHistory(params: {
 
   if (!contentType.toLowerCase().includes("application/json")) {
     return {
-      history: [] as RasaHistoryItem[],
+      events: [] as RasaHistoryEvent[],
       error: "Rasa tracker returned non-JSON response",
       status: tracker.status,
     };
@@ -80,16 +94,23 @@ export async function fetchRasaHistory(params: {
     data = await tracker.json();
   } catch {
     return {
-      history: [] as RasaHistoryItem[],
+      events: [] as RasaHistoryEvent[],
       error: "Failed to parse Rasa tracker response",
       status: tracker.status,
     };
   }
 
-  const events = Array.isArray(data.events) ? (data.events as RasaHistoryEvent[]) : [];
+  return {
+    events: Array.isArray(data.events) ? (data.events as RasaHistoryEvent[]) : [],
+    error: undefined,
+    status: tracker.status,
+  };
+}
+
+export function mapRasaTrackerEvents(events: RasaHistoryEvent[], includeDebugMetadata = false) {
   let turnIndex = 0;
 
-  const history = events.flatMap((event, eventIndex): RasaHistoryItem[] => {
+  return events.flatMap((event, eventIndex): RasaHistoryItem[] => {
     const previousActionName =
       eventIndex > 0 && events[eventIndex - 1]?.event === "action"
         ? events[eventIndex - 1]?.name
@@ -104,7 +125,7 @@ export async function fetchRasaHistory(params: {
         {
           role: "user",
           text,
-          ...(params.includeDebugMetadata
+          ...(includeDebugMetadata
             ? {
                 debug: {
                   eventIndex,
@@ -131,8 +152,11 @@ export async function fetchRasaHistory(params: {
         : event.data?.custom && typeof event.data.custom === "object"
           ? event.data.custom
           : null;
+    const buttons = normalizeButtons(
+      event.buttons ?? (event.data && typeof event.data === "object" ? (event.data as Record<string, unknown>).buttons : undefined)
+    );
 
-    const debug = params.includeDebugMetadata
+    const debug = includeDebugMetadata
       ? {
           eventIndex,
           turnIndex,
@@ -150,6 +174,7 @@ export async function fetchRasaHistory(params: {
           role: "assistant",
           text: event.text,
           custom,
+          buttons,
           feedbackKey: `bot:${eventIndex}`,
           ...(debug ? { debug } : {}),
         },
@@ -161,6 +186,7 @@ export async function fetchRasaHistory(params: {
         {
           role: "assistant",
           text: event.text,
+          buttons,
           feedbackKey: `bot:${eventIndex}`,
           ...(debug ? { debug } : {}),
         },
@@ -175,14 +201,45 @@ export async function fetchRasaHistory(params: {
       {
         role: "assistant",
         custom,
+        buttons,
+        feedbackKey: `bot:${eventIndex}`,
         ...(debug ? { debug } : {}),
       },
     ];
   });
+}
+
+export async function fetchRasaHistory(params: {
+  headers: Headers;
+  cookies: Map<string, string>;
+  userSub: string;
+  threadId: number | null;
+  includeDebugMetadata?: boolean;
+}) {
+  const apiUrl = getRasaUrlForRequest(params.headers, params.cookies);
+  if (!apiUrl) {
+    return {
+      history: [] as RasaHistoryItem[],
+      error: "Rasa not configured",
+      status: 500,
+    };
+  }
+
+  const senderId = buildRasaSenderId(params.userSub, params.threadId);
+  const trackerResult = await fetchRasaTrackerEvents(apiUrl, senderId);
+  if (trackerResult.error) {
+    return {
+      history: [] as RasaHistoryItem[],
+      error: trackerResult.error,
+      status: trackerResult.status,
+    };
+  }
+
+  const history = mapRasaTrackerEvents(trackerResult.events, params.includeDebugMetadata === true);
 
   return {
     history,
     error: undefined,
-    status: tracker.status,
+    status: trackerResult.status,
   };
 }

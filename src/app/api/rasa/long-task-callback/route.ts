@@ -17,6 +17,7 @@ const ACTION_SERVER_TOKEN = process.env.ACTION_SERVER_TOKEN;
 type CallbackMessage = {
   text?: unknown;
   custom?: unknown;
+  buttons?: unknown;
 };
 
 type CallbackPayload = {
