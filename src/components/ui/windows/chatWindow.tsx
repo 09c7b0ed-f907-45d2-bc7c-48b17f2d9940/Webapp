@@ -179,7 +179,7 @@ function formatPlanDebugMessage(plan: VisualizationPlanMessageDTO, traceId: stri
 
   let payload = "";
   try {
-    payload = JSON.stringify(normalizedPlan, null, 2);
+    payload = JSON.stringify(plan, null, 2);
   } catch {
     payload = "{\n  \"error\": \"Failed to serialize visualization plan payload\"\n}";
   }
