@@ -494,6 +494,7 @@ export default function ChatWindow() {
   useEffect(() => {
     if (!currentThreadId) return;
 
+    let closedByCleanup = false;
     const es = new EventSource(`/api/rasa/stream?threadId=${currentThreadId}`, { withCredentials: true });
 
     es.onmessage = (event) => {
@@ -506,10 +507,14 @@ export default function ChatWindow() {
     };
 
     es.onerror = (err) => {
-      console.error("SSE connection error:", err);
+      if (closedByCleanup || es.readyState === EventSource.CLOSED) {
+        return;
+      }
+      console.warn("SSE connection interrupted; browser will retry.", err);
     };
 
     return () => {
+      closedByCleanup = true;
       es.close();
     };
   }, [currentThreadId]);
