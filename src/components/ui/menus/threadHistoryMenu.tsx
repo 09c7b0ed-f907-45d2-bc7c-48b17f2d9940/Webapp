@@ -139,8 +139,11 @@ export function SideMenu() {
 
   useEffect(() => {
     setOpen(true);
+  }, [setOpen]);
+
+  useEffect(() => {
     getThreads();
-  }, [getThreads, setOpen]);
+  }, [getThreads]);
 
   useEffect(() => {
     const onThreadActivity = (event: Event) => {
@@ -169,7 +172,7 @@ export function SideMenu() {
     <Sidebar collapsible="icon" variant="inset" className="overflow-hidden" >
       <SidebarHeader className="pt-22 pb-0">
           <SidebarMenuButton
-            onClick={() => setOpen(!open)}
+            onClick={() => setOpen((current) => !current)}
             variant="outline"
             tooltip={open ? t('threads.menu.collapse') : t('threads.menu.expand')}
             className="w-full flex items-center justify-center hover:text-white"

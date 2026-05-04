@@ -53,6 +53,10 @@ type Props = {
 
 export default function ChatMessageList({ messages, currentThreadId, onButtonClick }: Props) {
   const endRef = useRef<HTMLDivElement | null>(null);
+  const latestNonProgressMessageIndex = [...messages]
+    .map((message, index) => ({ message, index }))
+    .filter(({ message }) => message.kind !== "progress")
+    .at(-1)?.index;
   const latestAssistantMessageIndex = [...messages]
     .map((message, index) => ({ message, index }))
     .filter(({ message }) => message.sender === "other" && message.kind !== "progress" && !!message.feedbackKey)
@@ -115,6 +119,7 @@ export default function ChatMessageList({ messages, currentThreadId, onButtonCli
       <ScrollArea className="h-full w-full ">
         <div className="flex flex-col gap-2 p-2 pt-10">
           {messages.map((msg, index) => {
+            const shouldShowButtons = msg.sender === "other" && latestNonProgressMessageIndex === index;
             const shouldShowFeedback =
               currentThreadId != null &&
               msg.sender === "other" &&
@@ -129,7 +134,7 @@ export default function ChatMessageList({ messages, currentThreadId, onButtonCli
                 sender={msg.sender === "user" ? "me" : "other"}
                 isProgress={msg.kind === "progress"}
                 debug={msg.debug}
-                buttons={msg.buttons}
+                buttons={shouldShowButtons ? msg.buttons : undefined}
                 onButtonClick={onButtonClick}
               />
             );

@@ -35,9 +35,9 @@ const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 type SidebarContextProps = {
   state: "expanded" | "collapsed"
   open: boolean
-  setOpen: (open: boolean) => void
+  setOpen: React.Dispatch<React.SetStateAction<boolean>>
   openMobile: boolean
-  setOpenMobile: (open: boolean) => void
+  setOpenMobile: React.Dispatch<React.SetStateAction<boolean>>
   isMobile: boolean
   toggleSidebar: () => void
 }
@@ -73,9 +73,15 @@ function SidebarProvider({
   // We use openProp and setOpenProp for control from outside the component.
   const [_open, _setOpen] = React.useState(defaultOpen)
   const open = openProp ?? _open
+  const openRef = React.useRef(open)
+
+  React.useEffect(() => {
+    openRef.current = open
+  }, [open])
+
   const setOpen = React.useCallback(
     (value: boolean | ((value: boolean) => boolean)) => {
-      const openState = typeof value === "function" ? value(open) : value
+      const openState = typeof value === "function" ? value(openRef.current) : value
       if (setOpenProp) {
         setOpenProp(openState)
       } else {
@@ -85,7 +91,7 @@ function SidebarProvider({
       // This sets the cookie to keep the sidebar state.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
-    [setOpenProp, open]
+    [setOpenProp]
   )
 
   // Helper to toggle the sidebar.
