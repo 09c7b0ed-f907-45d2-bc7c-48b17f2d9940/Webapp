@@ -301,6 +301,7 @@ export default function ChatWindow() {
   const seenIncomingPayloadKeysRef = useRef<Map<string, number>>(new Map());
   const language = useSettingsStore((s) => s.language);
   const { t } = useTranslation('common');
+  const isChatDisabled = currentThreadId === null;
 
   const emitPlanDebugMessage = useCallback((plan: VisualizationPlanMessageDTO, traceId: string | null) => {
     const planMessage = createPlanDebugEntry(plan, traceId, seenPlanMessageKeysRef.current);
@@ -595,7 +596,12 @@ export default function ChatWindow() {
          ) : (
           <ChatMessageList messages={messages} currentThreadId={currentThreadId} onButtonClick={handleButtonClick} />
         )}
-        <ChatInput onSubmit={sendMessage} loading={isWaitingForBot} />
+        <ChatInput
+          onSubmit={sendMessage}
+          loading={isWaitingForBot}
+          disabled={isChatDisabled}
+          placeholder={isChatDisabled ? t('chat.disabledPlaceholder') : t('chat.placeholder')}
+        />
       </div>
     </div>
   );

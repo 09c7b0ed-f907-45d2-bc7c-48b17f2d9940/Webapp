@@ -11,6 +11,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { SquarePen, Search, X, Pencil } from "lucide-react";
 import { ArrowLeftToLine, PanelLeftIcon } from "lucide-react"
 import { useCallback, useEffect, useState } from "react";
@@ -119,8 +120,13 @@ export function SideMenu() {
       const data = await res.json();
 
       const newThreads = (data.results || []);
+      // if (newThreads.length === 0) {
+      //   //await postThread(`${t('threads.name.default')}1`);
+      //   return;
+      // }
       if (newThreads.length === 0) {
-        await postThread(`${t('threads.name.default')}1`);
+        setThreads([]);
+        setCurrentThreadId(null);
         return;
       }
 
@@ -216,7 +222,7 @@ export function SideMenu() {
                 <Field className="mb-6">
                   <Input
                     name="name"
-                    defaultValue={t('threads.name.default') + (threads.length - 1)}
+                    defaultValue={t('threads.name.default') + (" ") + (threads.length + 1)}
                   />
                 </Field>
                 <DialogFooter>
@@ -262,6 +268,13 @@ export function SideMenu() {
   
                   <Skeleton className="h-6 w-9/12 rounded-md bg-muted my-1" />
               </div>
+              ) : threads.length === 0 ? (
+                <Alert className="mt-2 border-dashed bg-black/5">
+                  <AlertTitle className="">{t('threads.empty.title')}</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    {t('threads.empty.description')}
+                  </AlertDescription>
+                </Alert>
             ) : (
               threads.map((thread) => (
                 <SidebarMenuItem key={thread.id} >

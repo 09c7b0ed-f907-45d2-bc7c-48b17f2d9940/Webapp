@@ -105,7 +105,7 @@ export default function TopBar() {
 			</div>
 			<div className="flex items-center gap-4 ">
 				{canViewFeedbackAdmin ? (
-					<Button variant="outline" className="rounded" asChild>
+					<Button variant="outline" className="rounded  hover:bg-black/5" asChild>
 						<Link href="/admin/feedback">Feedback Admin</Link>
 					</Button>
 				) : null}
