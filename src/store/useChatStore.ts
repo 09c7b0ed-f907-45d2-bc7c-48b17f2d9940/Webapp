@@ -22,7 +22,7 @@ export const useChatStore = create<ChatStore>((set) => ({
   visualization: null,
   setVisualization: (v) => set({ visualization: v }),
   history: [],
-  setHistory: (history) => set({ history }),
+  setHistory: (history) => set({ history: [...history].reverse() }),
   clearHistory: () => set({ history: [] }),
   addToHistory: (v) => set((state) => ({ history: [v, ...state.history] })),
   visualizationPlans: {},
