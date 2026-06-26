@@ -51,7 +51,7 @@
   },
   "pnpm": {
     "overrides": {
-      "i18next-fs-backend": "2.6.4",
+      "i18next-fs-backend": "2.6.6",
       "lodash": "4.18.0",
       "postcss": "8.5.10",
       "preact": "10.26.10",
