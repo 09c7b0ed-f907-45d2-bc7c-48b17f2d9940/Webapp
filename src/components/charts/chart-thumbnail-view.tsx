@@ -43,10 +43,10 @@ export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {
   );
 
   const data = bins.map((bin) => {
-    const point: Record<string, number | string> = { bin };
+    const point: Record<string, number | string | null> = { bin };
     chart.series.forEach((s) => {
-      const val = s.data.find((p) => String(p.x) === String(bin))?.y ?? NaN;
-      point[s.name] = val;
+      const val = s.data.find((p) => String(p.x) === String(bin))?.y;
+      point[s.name] = typeof val === "number" && val === 0 ? null : (val ?? null);
     });
     return point;
   });
@@ -62,6 +62,7 @@ export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {
             stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
             strokeWidth={2}
             dot={false}
+            connectNulls={false}
             isAnimationActive={false}
           />
         ))}

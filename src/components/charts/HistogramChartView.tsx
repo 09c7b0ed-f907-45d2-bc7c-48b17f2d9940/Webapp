@@ -46,7 +46,8 @@ export function HistogramChartView({ chart }: Props) {
               label={{
                 value: yLabel,
                 angle: -90,
-                position: "insideLeft",
+                position: "center",
+                dx: -20,
               }}
             />
             <Tooltip />
@@ -55,6 +56,7 @@ export function HistogramChartView({ chart }: Props) {
               dataKey="value"
               name={chart.metadata?.y_axis?.label ?? ""}
               fill="hsl(200, 70%, 50%)"
+              isAnimationActive={false}
             />
           </BarChart>
         </ResponsiveContainer>

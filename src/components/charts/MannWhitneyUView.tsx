@@ -76,7 +76,7 @@ export function MannWhitneyUView({ result }: MannWhitneyUViewProps) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b">
-                <th className="text-left py-2 px-3 font-semibold">Metric</th>
+                <th></th>
                 <th className="text-center py-2 px-3 font-semibold">{details.cohort_a_label || 'Cohort A'}</th>
                 <th className="text-center py-2 px-3 font-semibold">{details.cohort_b_label || 'Cohort B'}</th>
               </tr>

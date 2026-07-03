@@ -52,7 +52,8 @@ export function WaterfallChartView({ chart }: Props) {
               label={{
                 value: chart.metadata?.y_axis?.label ?? "",
                 angle: -90,
-                position: "insideLeft",
+                position: "center",
+                dx: -20,
               }}
             />
             <Tooltip />
@@ -61,6 +62,7 @@ export function WaterfallChartView({ chart }: Props) {
               dataKey="value"
               name={chart.metadata?.y_axis?.label ?? ""}
               fill="hsl(140, 70%, 45%)"
+              isAnimationActive={false}
             />
           </BarChart>
         </ResponsiveContainer>

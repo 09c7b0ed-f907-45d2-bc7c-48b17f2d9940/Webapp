@@ -62,7 +62,8 @@ export function BarChartView({ chart }: Props) {
                   label={{
                     value: chart.metadata?.y_axis?.label ?? "",
                     angle: -90,
-                    position: "insideLeft",
+                    position: "center",
+                    dx: -20,
                   }}
                 />
               </>
@@ -82,7 +83,8 @@ export function BarChartView({ chart }: Props) {
                   label={{
                     value: chart.metadata?.x_axis?.label ?? "",
                     angle: -90,
-                    position: "insideLeft",
+                    position: "center",
+                    dx: -20,
                   }}
                 />
               </>
@@ -95,6 +97,7 @@ export function BarChartView({ chart }: Props) {
                 dataKey={s.name}
                 fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
                 stackId={chart.stacked ? "1" : undefined}
+                isAnimationActive={false}
               />
             ))}
           </RCBarChart>
