@@ -7,13 +7,25 @@ import { Loader2 } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import "@/i18n"
 import { SendIcon } from "./icons/send-icon"
-import { extractAutocompleteTarget } from "@/lib/autocomplete-utils"
+import { extractAutocompleteTargets } from "@/lib/autocomplete-utils"
 
-const MAX_AUTOCOMPLETE_SCORE = 220
+const MAX_AUTOCOMPLETE_SCORE = 520
+
+function normalizeAutocompleteText(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+}
 
 function getAutocompleteScore(candidate: string, query: string): number {
-  const normalizedCandidate = candidate.toLowerCase()
-  const normalizedQuery = query.toLowerCase()
+  const normalizedCandidate = normalizeAutocompleteText(candidate)
+  const normalizedQuery = normalizeAutocompleteText(query)
+
+  if (!normalizedCandidate || !normalizedQuery) {
+    return Number.POSITIVE_INFINITY
+  }
 
   if (normalizedCandidate === normalizedQuery) {
     return Number.POSITIVE_INFINITY
@@ -38,12 +50,45 @@ function getAutocompleteScore(candidate: string, query: string): number {
     if (char === normalizedQuery[queryIndex]) {
       queryIndex += 1
       if (queryIndex === normalizedQuery.length) {
-        return 400 + normalizedCandidate.length
+        return 300 + normalizedCandidate.length
       }
     }
   }
 
   return Number.POSITIVE_INFINITY
+}
+
+function isTypedTokenMatch(currentToken: string, suggestionToken: string): boolean {
+  const normalizedCurrent = currentToken.toLowerCase()
+  const normalizedSuggestion = suggestionToken.toLowerCase()
+  return normalizedCurrent === normalizedSuggestion || normalizedSuggestion.startsWith(normalizedCurrent)
+}
+
+function getReplacementWordCount(current: string, suggestion: string, autocompleteItems: string[]): number {
+  const currentWords = current.split(/\s+/).filter(Boolean)
+  const suggestionWords = suggestion.trim().split(/\s+/).filter(Boolean)
+
+  if (suggestionWords.length < 2 || currentWords.length < suggestionWords.length) {
+    return 1
+  }
+
+  const phraseLength = suggestionWords.length
+  const currentTailWords = currentWords.slice(-phraseLength)
+  const knownAutocompletePhrases = new Set(
+    autocompleteItems.map((item) => item.trim().toLowerCase()).filter(Boolean),
+  )
+
+  if (!knownAutocompletePhrases.has(currentTailWords.join(" ").toLowerCase())) {
+    return 1
+  }
+
+  for (let index = 1; index < phraseLength; index += 1) {
+    if (!isTypedTokenMatch(currentTailWords[index] ?? "", suggestionWords[index] ?? "")) {
+      return 1
+    }
+  }
+
+  return phraseLength
 }
 
 interface ChatInputProps {
@@ -66,6 +111,7 @@ export function ChatInput({
   const [message, setMessage] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(false)
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = React.useState(0)
+  const [areSuggestionsHidden, setAreSuggestionsHidden] = React.useState(false)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const { t } = useTranslation('common')
   const isBusy = isLoading || loading
@@ -75,22 +121,46 @@ export function ChatInput({
   const MAX_HEIGHT = 160
 
   const suggestions = React.useMemo(() => {
+    if (areSuggestionsHidden) {
+      return []
+    }
+
     if (/\s$/.test(message)) {
       return []
     }
 
-    const target = extractAutocompleteTarget(message)
-    if (!target || target.length < 3) {
+    const targets = extractAutocompleteTargets(message)
+      .map((t) => t.toLowerCase())
+      .filter((t) => t.length >= 2)
+
+    if (targets.length === 0) {
       return []
     }
 
     return autocompleteItems
-      .map((item) => ({ item, score: getAutocompleteScore(item, target) }))
+      .map((item) => ({
+        item,
+        score: Math.min(...targets.map((t) => getAutocompleteScore(item, t))),
+      }))
       .filter((entry) => Number.isFinite(entry.score) && entry.score <= MAX_AUTOCOMPLETE_SCORE)
       .sort((left, right) => left.score - right.score || left.item.localeCompare(right.item))
       .map((entry) => entry.item)
       .slice(0, 6)
-  }, [autocompleteItems, message])
+  }, [areSuggestionsHidden, autocompleteItems, message])
+
+  const getMatchedTargetSuffix = React.useCallback((input: string): string | null => {
+    const trimmed = input.replace(/\s+$/, "")
+    if (!trimmed) return null
+    const lower = trimmed.toLowerCase()
+    const targets = extractAutocompleteTargets(trimmed)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+      .sort((a, b) => b.length - a.length)
+    for (const target of targets) {
+      if (lower.endsWith(target.toLowerCase())) return target
+    }
+    return null
+  }, [])
 
   React.useEffect(() => {
     const textarea = textareaRef.current
@@ -107,34 +177,50 @@ export function ChatInput({
   }, [suggestions])
 
   const applySuggestion = React.useCallback((suggestion: string) => {
+    setAreSuggestionsHidden(false)
     setMessage((current) => {
       const withoutTrailingWhitespace = current.replace(/\s+$/, "")
       if (!withoutTrailingWhitespace) {
         return `${suggestion} `
       }
 
-      const activeTokenMatch = withoutTrailingWhitespace.match(/\S+$/)
-      if (!activeTokenMatch || activeTokenMatch.index === undefined) {
-        return `${withoutTrailingWhitespace}${suggestion} `
+      const matchedTarget = getMatchedTargetSuffix(withoutTrailingWhitespace)
+      if (matchedTarget) {
+        const startIndex = withoutTrailingWhitespace.length - matchedTarget.length
+        const prefix = withoutTrailingWhitespace.slice(0, startIndex)
+        return `${prefix}${suggestion} `
       }
 
-      const prefix = withoutTrailingWhitespace.slice(0, activeTokenMatch.index)
-      return `${prefix}${suggestion} `
+      const currentWords = withoutTrailingWhitespace.split(/\s+/).filter(Boolean)
+      if (currentWords.length === 0) {
+        return `${suggestion} `
+      }
+
+      const replacementWordCount = getReplacementWordCount(
+        withoutTrailingWhitespace,
+        suggestion,
+        autocompleteItems,
+      )
+
+      const prefixWords = currentWords.slice(0, Math.max(0, currentWords.length - replacementWordCount))
+      return `${[...prefixWords, suggestion].join(" ")} `
     })
 
     requestAnimationFrame(() => {
       textareaRef.current?.focus()
     })
-  }, [])
+  }, [autocompleteItems, getMatchedTargetSuffix])
 
   const handleSubmit = async () => {
     const trimmed = message.trim()
     if (!trimmed || isBusy || disabled) return
 
+    setAreSuggestionsHidden(true)
     setIsLoading(true)
     try {
       await onSubmit(trimmed)
       setMessage("")
+      setAreSuggestionsHidden(false)
       requestAnimationFrame(() => {
         textareaRef.current?.focus()
       })
@@ -158,7 +244,7 @@ export function ChatInput({
       return
     }
 
-    if (suggestions.length > 0 && (e.key === "Tab" || (e.key === "Enter" && selectedSuggestionIndex >= 0))) {
+    if (suggestions.length > 0 && e.key === "Tab") {
       e.preventDefault()
       applySuggestion(suggestions[selectedSuggestionIndex] ?? suggestions[0])
       return
@@ -178,7 +264,10 @@ export function ChatInput({
           placeholder={computedPlaceholder}
           aria-label={computedPlaceholder}
           value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          onChange={(e) => {
+            setAreSuggestionsHidden(false)
+            setMessage(e.target.value)
+          }}
           onKeyDown={handleKeyDown}
           disabled={disabled || isBusy}
           rows={1}
@@ -186,7 +275,7 @@ export function ChatInput({
         />
         {suggestions.length > 0 ? (
           <div className="absolute inset-x-0 bottom-full mb-2 overflow-hidden rounded-md border bg-background shadow-md">
-            <ul className="max-h-100 overflow-y-auto py-1">
+            <ul className="max-h-100 overflow-y-auto ">
               {suggestions.map((suggestion, index) => (
                 <li key={suggestion}>
                   <button
@@ -197,7 +286,14 @@ export function ChatInput({
                       applySuggestion(suggestion)
                     }}
                   >
-                    {suggestion}
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 flex-1 break-words">{suggestion}</span>
+                      {index === selectedSuggestionIndex ? (
+                        <span className="shrink-0 rounded border border-border/70 bg-muted-foreground/10 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          ↹ TAB
+                        </span>
+                      ) : null}
+                    </span>
                   </button>
                 </li>
               ))}
