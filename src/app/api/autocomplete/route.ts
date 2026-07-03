@@ -11,6 +11,12 @@ type SsotEntry = {
     description?: Record<string, string>;
 };
 
+type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
+
+function isSupportedLanguage(value: string): value is SupportedLanguage {
+    return SUPPORTED_LANGUAGES.includes(value as SupportedLanguage);
+}
+
 function toUniqueStrings(values: Iterable<string>): string[] {
     return Array.from(
         new Set(
@@ -33,7 +39,7 @@ export async function GET(request: NextRequest) {
         const language = searchParams.get("language") || DEFAULT_LANGUAGE;
 
         // Validate language is supported
-        if (!SUPPORTED_LANGUAGES.includes(language as any)) {
+        if (!isSupportedLanguage(language)) {
             return NextResponse.json(
                 { error: `Unsupported language: ${language}` },
                 { status: 400 }
@@ -57,12 +63,12 @@ export async function GET(request: NextRequest) {
                 return parsed.flatMap((entry) => {
                     const record = entry as SsotEntry;
                     const results: string[] = [];
-
+                    
                     // Include the canonical entry
                     if (record.canonical) {
                         results.push(record.canonical);
                     }
-
+                    
                     // Include synonyms for the requested language
                     const synonymsByLanguage = record.synonyms;
                     if (
@@ -75,7 +81,7 @@ export async function GET(request: NextRequest) {
                             results.push(...langSynonyms);
                         }
                     }
-
+                    
                     return results;
                 });
             })
