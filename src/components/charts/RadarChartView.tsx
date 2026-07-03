@@ -45,6 +45,7 @@ export function RadarChartView({ chart }: Props) {
                 stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
                 fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
                 fillOpacity={0.3}
+                isAnimationActive={false}
               />
             ))}
           </RCRadarChart>

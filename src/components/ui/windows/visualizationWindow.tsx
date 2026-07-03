@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactElement } from "react";
+import { useEffect, type ReactElement } from "react";
 import { useChatStore } from "@/store/useChatStore";
 import type { ChartDTO } from "@/models/dto/charts";
 import { LineChartView } from "@/components/charts/LineChartView";
@@ -15,26 +15,29 @@ import { BoxChartView } from "@/components/charts/BoxChartView";
 import type { StatisticalTestResultDTO } from "@/models/dto/response";
 import { MannWhitneyUView } from "@/components/charts/MannWhitneyUView";
 import { useTranslation } from 'react-i18next';
+import { useThread } from "@/components/ThreadContext";
 import '@/i18n';
 
 export default function VisualizationWindow() {
+  const { currentThreadId } = useThread();
   const visualization = useChatStore((s) => s.visualization);
+  const setVisualization = useChatStore((s) => s.setVisualization);
   const selectedIndex = useChatStore((s) => s.selectedChartIndex);
+  const setSelectedChartIndex = useChatStore((s) => s.setSelectedChartIndex);
   const selectedStatIndex = useChatStore((s) => s.selectedStatisticsIndex);
+  const setSelectedStatisticsIndex = useChatStore((s) => s.setSelectedStatisticsIndex);
   const { t } = useTranslation('common');
 
-  const activeChartIndex =
-    selectedIndex !== null
-      ? selectedIndex
-      : visualization?.charts && visualization.charts.length > 0
-        ? 0
-        : null;
-  const activeStatIndex =
-    selectedStatIndex !== null
-      ? selectedStatIndex
-      : activeChartIndex === null && visualization?.stats && visualization.stats.length > 0
-        ? 0
-        : null;
+  useEffect(() => {
+    if (currentThreadId === null) {
+      setVisualization(null);
+      setSelectedChartIndex(null);
+      setSelectedStatisticsIndex(null);
+    }
+  }, [currentThreadId, setSelectedChartIndex, setSelectedStatisticsIndex, setVisualization]);
+
+  const activeChartIndex = selectedIndex;
+  const activeStatIndex = selectedStatIndex;
 
   const showStat = activeStatIndex !== null && visualization?.stats && visualization.stats[activeStatIndex];
   const showChart = activeChartIndex !== null && visualization?.charts && visualization.charts[activeChartIndex] && !showStat;

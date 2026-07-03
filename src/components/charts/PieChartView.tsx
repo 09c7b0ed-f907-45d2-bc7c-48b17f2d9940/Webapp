@@ -32,6 +32,7 @@ export function PieChartView({ chart }: Props) {
               outerRadius={80}
               innerRadius={chart.donut ? 50 : 0}
               label
+              isAnimationActive={false}
             >
               {chart.data.map((s, i) => (
                 <Cell
