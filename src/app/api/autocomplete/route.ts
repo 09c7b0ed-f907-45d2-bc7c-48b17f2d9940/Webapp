@@ -57,12 +57,12 @@ export async function GET(request: NextRequest) {
                 return parsed.flatMap((entry) => {
                     const record = entry as SsotEntry;
                     const results: string[] = [];
-
+                    
                     // Include the canonical entry
                     if (record.canonical) {
                         results.push(record.canonical);
                     }
-
+                    
                     // Include synonyms for the requested language
                     const synonymsByLanguage = record.synonyms;
                     if (
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
                             results.push(...langSynonyms);
                         }
                     }
-
+                    
                     return results;
                 });
             })
