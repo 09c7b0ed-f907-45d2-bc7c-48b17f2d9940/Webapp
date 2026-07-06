@@ -48,7 +48,8 @@ export function ScatterChartView({ chart }: Props) {
               label={{
                 value: chart.metadata?.y_axis?.label ?? "",
                 angle: -90,
-                position: "insideLeft",
+                position: "center",
+                dx: -20,
               }}
             />
             <Tooltip cursor={{ strokeDasharray: "3 3" }} />
@@ -60,6 +61,7 @@ export function ScatterChartView({ chart }: Props) {
                 dataKey="y"
                 data={data.filter((d) => d.series === series.name)}
                 fill={`hsl(${(index * 70) % 360}, 70%, 50%)`}
+                isAnimationActive={false}
               />
             ))}
           </ScatterChart>

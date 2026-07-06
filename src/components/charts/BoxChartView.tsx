@@ -46,12 +46,13 @@ export function BoxChartView({ chart }: Props) {
               label={{
                 value: chart.metadata?.y_axis?.label ?? "",
                 angle: -90,
-                position: "insideLeft",
+                position: "center",
+                dx: -20,
               }}
             />
             <Tooltip />
             <Legend />
-            <Bar dataKey="median" name="Median" fill="hsl(220, 70%, 50%)">
+            <Bar dataKey="median" name="Median" fill="hsl(220, 70%, 50%)" isAnimationActive={false}>
               <ErrorBar dataKey="q1" direction="y" />
             </Bar>
           </BarChart>

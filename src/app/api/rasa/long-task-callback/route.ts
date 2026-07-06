@@ -167,7 +167,7 @@ export async function POST(req: NextRequest) {
 
   // Publish controls directly so the client can respond to lock/release signals.
   for (const control of controls) {
-    publishToSender(senderId, { type: "control", ...control });
+    publishToSender(senderId, control);
   }
 
   console.info("[long-task-callback] Received callback payload", createTraceLogContext(traceId, {

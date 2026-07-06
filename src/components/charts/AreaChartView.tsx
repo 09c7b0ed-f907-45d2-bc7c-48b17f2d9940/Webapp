@@ -57,7 +57,8 @@ export function AreaChartView({ chart }: Props) {
               label={{
                 value: chart.metadata?.y_axis?.label ?? "",
                 angle: -90,
-                position: "insideLeft",
+                position: "center",
+                dx: -20,
               }}
             />
             <Tooltip />
@@ -71,6 +72,7 @@ export function AreaChartView({ chart }: Props) {
                 fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
                 fillOpacity={0.25}
                 stackId={chart.stacked ? "1" : undefined}
+                isAnimationActive={false}
               />
             ))}
           </RCAreaChart>
