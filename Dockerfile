@@ -26,6 +26,7 @@ RUN mkdir -p /app/.data && chown -R node:node /app && chmod 700 /app/.data
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
+COPY --from=builder --chown=node:node /app/src/shared/SSOT ./src/shared/SSOT
 
 ENV WEBAPP_VERSION=${WEBAPP_VERSION}
 ENV WEBAPP_COMMIT_SHA=${WEBAPP_COMMIT_SHA}
