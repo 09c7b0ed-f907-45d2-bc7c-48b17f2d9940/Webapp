@@ -122,6 +122,49 @@ describe("POST /api/rasa", () => {
     expect(typeof body.publishedMessages).toBe("number");
   });
 
+  it("forwards caller metadata and accepts metadata.ui_display_text", async () => {
+    authMock.mockResolvedValue({ accessToken: "tok", user: { id: "u1" }, accessTokenExpires: 9999999 });
+    getRasaUrlForRequestMock.mockReturnValue("http://rasa:5005");
+
+    fetchRasaTrackerEventsMock
+      .mockResolvedValueOnce({ events: [], error: undefined, status: 200 })
+      .mockResolvedValueOnce({ events: [], error: undefined, status: 200 });
+
+    mapRasaTrackerEventsMock.mockReturnValue([]);
+    publishCommittedHistoryItemsMock.mockReturnValue(0);
+
+    const bodyStream = new ReadableStream({ start(c) { c.close(); } });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, body: bodyStream });
+
+    const res = await POST(makeRequest({
+      message: "hi",
+      threadId: 1,
+      metadata: {
+        source: "thread-bootstrap",
+        bootstrap: true,
+        ui_display_text: "Start thread",
+      },
+    }));
+
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://rasa:5005/webhooks/rest/webhook?stream=true",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sender: "u1:thread:1",
+          message: "hi",
+          metadata: {
+            source: "thread-bootstrap",
+            bootstrap: true,
+            ui_display_text: "Start thread",
+          },
+        }),
+      })
+    );
+  });
+
   it("seeds the cursor floor from the baseline tracker event count", async () => {
     authMock.mockResolvedValue({ accessToken: "tok", user: { id: "u1" } });
     getRasaUrlForRequestMock.mockReturnValue("http://rasa:5005");

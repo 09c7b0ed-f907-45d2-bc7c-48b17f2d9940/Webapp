@@ -71,11 +71,13 @@ export function SideMenu() {
         },
         body: JSON.stringify({
           threadId,
-          message: 'hi',
+          message: '/greet',
           metadata: {
             source: 'thread-bootstrap',
-            bootstrap: true,
+            synthetic: true,
+            ui_display_text: ""
           },
+        
         }),
       });
 
