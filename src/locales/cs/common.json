@@ -42,7 +42,7 @@
   "threads.rename.title": "Přejmenovat vlákno",
   "threads.rename.description": "Zadejte nový název pro vlákno",
   "chat.placeholder": "Napište zprávu...",
-  "chat.disabledPlaceholder": "Pro odeslání zprávy vytvořte nebo vyberte vlákno.",
+  "chat.disabledPlaceholder": "Žádné vlákno není vybráno.",
   "chat.send": "Odeslat",
   "chat.error": "Došlo k chybě. Zkuste to prosím znovu.",
   "visualization.none": "Není vybrána žádná vizualizace.",

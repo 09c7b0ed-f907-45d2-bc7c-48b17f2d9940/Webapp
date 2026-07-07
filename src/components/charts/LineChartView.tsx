@@ -79,8 +79,18 @@ export function LineChartView({ chart }: Props) {
                 dataKey={s.name}
                 stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
                 strokeWidth={2}
-                dot={{ r: 10 }}
-                activeDot={{ r: 15 }}
+                dot={{
+                  r: 10,
+                  fill: "var(--primary-foreground)",
+                  stroke: `hsl(${(i * 70) % 360}, 70%, 50%)`,
+                  strokeWidth: 3,
+                }}
+                activeDot={{
+                  r: 15,
+                  fill: `hsl(${(i * 70) % 360}, 70%, 50%)`,
+                  stroke: "var(--primary-foreground)",
+                  strokeWidth: 3,
+                }}
                 connectNulls={false}
                 isAnimationActive={false}
               />

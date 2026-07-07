@@ -62,6 +62,7 @@ export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {
             stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
             strokeWidth={2}
             dot={false}
+            activeDot={false}
             connectNulls={false}
             isAnimationActive={false}
           />
@@ -105,6 +106,7 @@ export function AreaChartThumbnail({ chart }: { chart: AreaChartDTO }) {
             stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
             fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
             fillOpacity={0.6}
+            activeDot={false}
             isAnimationActive={false}
           />
         ))}

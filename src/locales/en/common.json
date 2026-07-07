@@ -42,7 +42,7 @@
   "threads.rename.title": "Rename Thread",
   "threads.rename.description": "Enter a new name for the thread",
   "chat.placeholder": "Type a message...",
-  "chat.disabledPlaceholder": "Create or select a thread to send a message.",
+  "chat.disabledPlaceholder": "No thread selected.",
   "chat.send": "Send",
   "chat.error": "Sorry, something went wrong. Please try again.",
   "visualization.none": "No visualization selected.",

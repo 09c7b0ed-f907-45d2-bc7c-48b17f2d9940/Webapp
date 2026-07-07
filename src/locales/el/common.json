@@ -42,7 +42,7 @@
   "threads.rename.title": "Μετονομασία Νήματος",
   "threads.rename.description": "Εισάγετε ένα νέο όνομα για το νήμα",
   "chat.placeholder": "Πληκτρολογήστε ένα μήνυμα...",
-  "chat.disabledPlaceholder": "Δημιουργήστε ή επιλέξτε ένα νήμα για να στείλετε μήνυμα.",
+  "chat.disabledPlaceholder": "Δεν έχει επιλεγεί νήμα.",
   "chat.send": "Αποστολή",
   "chat.error": "Κάτι πήγε στραβά. Δοκιμάστε ξανά.",
   "visualization.none": "Δεν έχει επιλεγεί απεικόνιση.",
