@@ -253,10 +253,14 @@ export function BoxChartThumbnail({ chart }: { chart: BoxChartDTO }) {
 
 // HISTOGRAM CHART THUMBNAIL
 export function HistogramChartThumbnail({ chart }: { chart: HistogramChartDTO }) {
+  const data = chart.data.map((bin) => ({
+    value: chart.cumulative ? bin.density ?? bin.frequency : bin.frequency,
+  }));
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <RCBarChart data={chart.data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-        <Bar dataKey="count" fill="hsl(200, 70%, 50%)" isAnimationActive={false} />
+      <RCBarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+        <Bar dataKey="value" fill="hsl(200, 70%, 50%)" isAnimationActive={false} />
       </RCBarChart>
     </ResponsiveContainer>
   );
