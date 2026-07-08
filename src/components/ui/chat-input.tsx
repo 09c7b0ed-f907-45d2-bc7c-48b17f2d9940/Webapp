@@ -119,7 +119,6 @@ export function ChatInput({
   const computedPlaceholder = placeholder ?? t('chat.placeholder')
 
   const MAX_HEIGHT = 160
-  const EMPTY_HEIGHT = 46
 
   const suggestions = React.useMemo(() => {
     if (areSuggestionsHidden) {
@@ -163,17 +162,10 @@ export function ChatInput({
     return null
   }, [])
 
-  React.useLayoutEffect(() => {
+  React.useEffect(() => {
     const textarea = textareaRef.current
     if (textarea) {
       textarea.style.height = "auto"
-
-      if (message.length === 0) {
-        textarea.style.height = `${EMPTY_HEIGHT}px`
-        textarea.style.overflowY = "hidden"
-        return
-      }
-
       const newHeight = Math.min(textarea.scrollHeight, MAX_HEIGHT)
       textarea.style.height = `${newHeight}px`
       textarea.style.overflowY = textarea.scrollHeight > MAX_HEIGHT ? "auto" : "hidden"
@@ -288,7 +280,7 @@ export function ChatInput({
           onKeyDown={handleKeyDown}
           disabled={disabled || isBusy}
           rows={1}
-          className="order-1 flex-1 !min-h-10 resize-none [field-sizing:fixed] duration-100 ease-in-out"
+          className="order-1 flex-1 min-h-10 resize-none duration-100 ease-in-out"
         />
         {suggestions.length > 0 ? (
           <div className="absolute inset-x-0 bottom-full mb-2 overflow-hidden rounded-md border bg-background shadow-md">
