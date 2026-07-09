@@ -341,7 +341,7 @@ export function SideMenu() {
                   </DialogClose>
                   <DialogClose asChild>
                     <Button type="submit">
-                      {t('threads.dialog.save')}
+                      {t('threads.dialog.create')}
                     </Button>
                   </DialogClose>
                 </DialogFooter>
