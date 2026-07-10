@@ -56,7 +56,7 @@ export function WaterfallChartView({ chart }: Props) {
                 dx: -20,
               }}
             />
-            <Tooltip />
+            <Tooltip cursor={{ fill: "oklch(from var(--foreground) l c h / 0.35)" }} />
             <Legend />
             <Bar
               dataKey="value"
