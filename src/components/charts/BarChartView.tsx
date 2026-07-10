@@ -89,7 +89,7 @@ export function BarChartView({ chart }: Props) {
                 />
               </>
             )}
-            <Tooltip />
+            <Tooltip cursor={{ fill: "oklch(from var(--foreground) l c h / 0.35)" }} />
             <Legend />
             {chart.series.map((s, i) => (
               <Bar
