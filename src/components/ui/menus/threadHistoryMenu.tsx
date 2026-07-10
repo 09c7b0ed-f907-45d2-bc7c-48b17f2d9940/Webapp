@@ -327,7 +327,7 @@ export function SideMenu() {
                     {t('threads.new.description')}
                   </DialogDescription>
                 </DialogHeader>
-                <Field className="mb-6">
+                <Field className="mb-6 dark:selection:bg-white/40">
                   <Input
                     name="name"
                     defaultValue={t('threads.name.default') + (" ") + (threads.length + 1)}
@@ -335,12 +335,12 @@ export function SideMenu() {
                 </Field>
                 <DialogFooter>
                   <DialogClose asChild>
-                    <Button type="button" variant="outline" className="hover:text-white">
+                    <Button type="button" variant="outline" className="hover:text-white ">
                       {t('threads.dialog.cancel')}
                     </Button>
                   </DialogClose>
                   <DialogClose asChild>
-                    <Button type="submit">
+                    <Button type="submit" className="text-white ">
                       {t('threads.dialog.create')}
                     </Button>
                   </DialogClose>
@@ -376,7 +376,7 @@ export function SideMenu() {
                   {t('threads.search.description')}
                 </DialogDescription>
               </DialogHeader>
-              <Field className="mb-4">
+              <Field className="mb-4 dark:selection:bg-white/40">
                 <Input
                   autoFocus
                   value={searchQuery}
@@ -478,7 +478,7 @@ export function SideMenu() {
                               {t('threads.rename.description')}
                             </DialogDescription>
                           </DialogHeader>
-                          <Field className="mb-6">
+                          <Field className="mb-6 dark:selection:bg-white/40">
                             <Input
                               name="name"
                               defaultValue={thread.name}
@@ -490,7 +490,7 @@ export function SideMenu() {
                                 {t('threads.dialog.cancel')}
                               </Button>
                             </DialogClose>
-                            <Button type="submit">
+                            <Button type="submit" className="text-white dark:ring-1 dark:ring-inset dark:ring-white/40">
                               {t('threads.dialog.save')}
                             </Button>
                           </DialogFooter>

@@ -23,7 +23,7 @@ export default function InfoAlertWindow() {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                    <AlertDialogAction>
+                    <AlertDialogAction className="text-white dark:ring-1 dark:ring-inset dark:ring-white/40">
                         {t('general.okay')}
                     </AlertDialogAction>
                 </AlertDialogFooter>

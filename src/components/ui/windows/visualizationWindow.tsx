@@ -45,7 +45,7 @@ export default function VisualizationWindow() {
   if (!visualization || (!showChart && !showStat)) {
     return (
       <div>
-        <div className=" font-semibold text-primary">{t('visualization.title')}</div>
+        <div className=" font-semibold text-primary dark:text-white">{t('visualization.title')}</div>
         <div className="text-center text-muted-foreground p-4">{t('visualization.none')}</div>
       </div>
     );

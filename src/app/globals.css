@@ -123,8 +123,9 @@
 [data-theme="resq"].dark {
   --background: #0a0a0a;
   --foreground: #fbfbfb;
-  --primary: #92bee5;
-  --secondary: #1b5682;
+  --primary: #0a0a0a;
+  --secondary: oklch(0.269 0 0);
+  --accent: oklch(0.269 0 0);
 }
 
 @layer base {

@@ -285,9 +285,9 @@ export function ChatInput({
         size="icon"
         aria-label={t('chat.send')}
         title={t('chat.send')}
-        className="rounded-full flex-shrink-0"
+        className="rounded-full flex-shrink-0  dark:ring-1 dark:ring-inset dark:ring-white disabled:ring-white/40 dark:disabled:ring-white/40 group"
       >
-        {isBusy ? <Loader2 className="animate-spin size-6" /> : <SendIcon className="fill-white size-7 translate-x-0.5" />}
+        {isBusy ? <Loader2 className="animate-spin size-6 text-white" /> : <SendIcon className="fill-white size-7 translate-x-0.5 group-disabled:opacity-50" />}
       </Button>
     </div>
   )

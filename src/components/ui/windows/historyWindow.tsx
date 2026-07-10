@@ -149,7 +149,7 @@ export default function HistoryWindow() {
 
   return (
     <div ref={containerRef} className="w-full h-full flex flex-col p-4">
-      <p className=" font-semibold text-primary">{t('history.title')}</p>
+      <p className=" font-semibold text-primary dark:text-white">{t('history.title')}</p>
       <ScrollArea
         ref={scrollRef}
         className="w-full flex-1"
