@@ -25,6 +25,7 @@
   "threads.dialog.cancel": "Zrušit",
   "threads.dialog.delete": "Smazat",
   "threads.dialog.save": "Uložit změny",
+  "threads.dialog.create": "Vytvořit vlákno",
   "threads.menu.new": "Nové vlákno",
   "threads.menu.search": "Hledat vlákna",
   "threads.search.description": "Najděte existující konverzaci zadáním části jejího názvu.",

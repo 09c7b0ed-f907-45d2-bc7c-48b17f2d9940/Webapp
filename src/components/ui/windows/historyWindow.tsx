@@ -213,7 +213,6 @@ export default function HistoryWindow() {
                               {item.type === "SCATTER" && t('visualization.type.scatter')}
                               {item.type === "HISTOGRAM" && t('visualization.type.histogram')}
                               {item.type === "WATERFALL" && t('visualization.type.waterfall')}
-                              {item.type !== "BOX" && item.type !== "LINE" && item.type !== "AREA" && item.type !== "BAR" && item.type !== "PIE" && item.type !== "RADAR" && item.type !== "SCATTER" && item.type !== "HISTOGRAM" && item.type !== "WATERFALL" && (<>{item.type}</>)}
                             </div>
                           </div>
                         </div>
