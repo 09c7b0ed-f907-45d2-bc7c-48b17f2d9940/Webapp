@@ -25,6 +25,7 @@
   "threads.dialog.cancel": "Ακύρωση",
   "threads.dialog.delete": "Διαγραφή",
   "threads.dialog.save": "Αποθήκευση αλλαγών",
+  "threads.dialog.create": "Δημιουργία Νήματος",
   "threads.menu.new": "Νέο Νήμα",
   "threads.menu.search": "Αναζήτηση Νημάτων",
   "threads.search.description": "Βρείτε μια υπάρχουσα συνομιλία πληκτρολογώντας μέρος του ονόματός της.",
