@@ -50,7 +50,10 @@ export function BoxChartView({ chart }: Props) {
                 dx: -20,
               }}
             />
-            <Tooltip />
+            <Tooltip 
+              animationEasing="spring"
+              contentStyle={{ backgroundColor: "var(--card)", borderRadius: "var(--radius)",  minWidth: "100px", fontSize: "0.75rem", fontWeight: "bold" }}
+             /> 
             <Legend />
             <Bar dataKey="median" name="Median" fill="hsl(220, 70%, 50%)" isAnimationActive={false}>
               <ErrorBar dataKey="q1" direction="y" />

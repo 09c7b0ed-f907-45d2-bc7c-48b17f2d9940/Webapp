@@ -36,7 +36,10 @@ export function RadarChartView({ chart }: Props) {
             <PolarAngleAxis dataKey="axis" />
             <PolarRadiusAxis />
             <Legend />
-            <Tooltip />
+            <Tooltip 
+              animationEasing="spring"
+              contentStyle={{ backgroundColor: "var(--card)", borderRadius: "var(--radius)",  minWidth: "100px", fontSize: "0.75rem", fontWeight: "bold" }} 
+            />      
             {chart.series.map((s, i) => (
               <Radar
                 key={s.name}

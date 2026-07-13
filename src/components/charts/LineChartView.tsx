@@ -43,7 +43,7 @@ export function LineChartView({ chart }: Props) {
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
+          <LineChart data={data} margin={{ top: 20, right: 20, bottom: 0, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="bin"
@@ -70,7 +70,10 @@ export function LineChartView({ chart }: Props) {
                 dx: -20,
               }}
             />
-            <Tooltip />
+           <Tooltip 
+              animationEasing="spring"
+              contentStyle={{ backgroundColor: "var(--card)", borderRadius: "var(--radius)",  minWidth: "100px", fontSize: "0.75rem", fontWeight: "bold" }}
+            />            
             <Legend />
             {chart.series.map((s, i) => (
               <Line

@@ -61,8 +61,11 @@ export function AreaChartView({ chart }: Props) {
                 dx: -20,
               }}
             />
-            <Tooltip />
-            <Legend />
+            <Tooltip 
+              animationEasing="spring"
+              contentStyle={{ backgroundColor: "var(--card)", borderRadius: "var(--radius)",  minWidth: "100px", fontSize: "0.75rem", fontWeight: "bold" }}
+             />            
+             <Legend />
             {chart.series.map((s, i) => (
               <Area
                 key={s.name}
