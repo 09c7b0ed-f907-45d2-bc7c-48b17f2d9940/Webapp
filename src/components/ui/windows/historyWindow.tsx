@@ -210,7 +210,9 @@ export default function HistoryWindow() {
                               {item.type === "BAR" && t('visualization.type.bar')}
                               {item.type === "PIE" && t('visualization.type.pie')}
                               {item.type === "RADAR" && t('visualization.type.radar')}
-                              {item.type !== "BOX" && item.type !== "LINE" && item.type !== "AREA" && item.type !== "BAR" && item.type !== "PIE" && item.type !== "RADAR" && (<>{item.type}</>)}
+                              {item.type === "SCATTER" && t('visualization.type.scatter')}
+                              {item.type === "HISTOGRAM" && t('visualization.type.histogram')}
+                              {item.type === "WATERFALL" && t('visualization.type.waterfall')}
                             </div>
                           </div>
                         </div>
@@ -229,7 +231,7 @@ export default function HistoryWindow() {
               const statItems = stats.map((item, statIndex) => {
                 const refKey = `${historyIndex}-stat-${statIndex}`;
                 const isSelected = visualization === viz && selectedStatisticsIndex === statIndex;
-                const statusLabel = item.status
+                const statusLabel = item.details
                   ? `${item.status.charAt(0).toUpperCase()}${item.status.slice(1)}`
                   : "Unknown";
                 return (

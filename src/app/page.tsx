@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
-import AlternateHistoryWindow from "@/components/ui/windows/historyWindow";
+import HistoryWindow from "@/components/ui/windows/historyWindow";
 import ChatWindow from "@/components/ui/windows/chatWindow";
 import VisualizationWindow from "@/components/ui/windows/visualizationWindow";
 
@@ -30,11 +30,11 @@ export default function HomePage() {
               </div>
             </ResizablePanel>
             <ResizableHandle className="min-h-1 bg-transparent" />
-            <ResizablePanel defaultSize="25%" minSize="15%" collapsible>
+            <ResizablePanel defaultSize="25%" minSize="20%" collapsible>
               <div className="flex h-full items-center justify-center p-2">
                 <Card className="h-full w-full p-0">
                     <CardContent className="h-full w-full p-2">
-                        <AlternateHistoryWindow />
+                        <HistoryWindow />
                     </CardContent>
                 </Card>
               </div>

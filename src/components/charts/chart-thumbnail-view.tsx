@@ -15,6 +15,8 @@ import {
   Radar,
   ScatterChart as RCScatterChart,
   Scatter,
+  XAxis,
+  YAxis,
 } from "recharts";
 import type { 
   LineChartDTO, 
@@ -165,7 +167,7 @@ export function PieChartThumbnail({ chart }: { chart: PieChartDTO }) {
           nameKey="label"
           cx="50%"
           cy="50%"
-          outerRadius={50}
+          outerRadius={"80%"}
           innerRadius={chart.donut ? 30 : 0}
           label={false}
           isAnimationActive={false}
@@ -205,6 +207,7 @@ export function RadarChartThumbnail({ chart }: { chart: RadarChartDTO }) {
             fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
             fillOpacity={0.3}
             isAnimationActive={false}
+            activeDot={false}
           />
         ))}
       </RCRadarChart>
@@ -217,12 +220,16 @@ export function ScatterChartThumbnail({ chart }: { chart: ScatterChartDTO }) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <RCScatterChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+        <XAxis type="number" dataKey="x" hide domain={["auto", "auto"]} />
+        <YAxis type="number" dataKey="y" hide domain={["auto", "auto"]} />
         {chart.series.map((s, i) => (
           <Scatter
             key={s.name}
             name={s.name}
             data={s.data.map((p) => ({ x: p.x, y: p.y }))}
             fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+            shape="circle"
+            fillOpacity={0.9}
             isAnimationActive={false}
           />
         ))}
@@ -253,10 +260,14 @@ export function BoxChartThumbnail({ chart }: { chart: BoxChartDTO }) {
 
 // HISTOGRAM CHART THUMBNAIL
 export function HistogramChartThumbnail({ chart }: { chart: HistogramChartDTO }) {
+  const data = chart.data.map((bin) => ({
+    value: chart.cumulative ? bin.density ?? bin.frequency : bin.frequency,
+  }));
+
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <RCBarChart data={chart.data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-        <Bar dataKey="count" fill="hsl(200, 70%, 50%)" isAnimationActive={false} />
+      <RCBarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+        <Bar dataKey="value" fill="hsl(200, 70%, 50%)" isAnimationActive={false} />
       </RCBarChart>
     </ResponsiveContainer>
   );
