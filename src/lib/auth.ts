@@ -138,7 +138,7 @@ export const authConfig = {
         token.error = undefined;
 
         if (sessionSubject && typeof account.access_token === "string") {
-          putUserTokens({
+          await putUserTokens({
             sub: sessionSubject,
             accessToken: account.access_token,
             refreshToken: typeof account.refresh_token === "string" ? account.refresh_token : null,
@@ -147,8 +147,8 @@ export const authConfig = {
         }
       }
 
-      const currentTokenEntry = sessionSubject ? getUserTokenEntry(sessionSubject) : null;
-      const currentAccessToken = sessionSubject ? getUserAccessToken(sessionSubject) : null;
+      const currentTokenEntry = sessionSubject ? await getUserTokenEntry(sessionSubject) : null;
+      const currentAccessToken = sessionSubject ? await getUserAccessToken(sessionSubject) : null;
 
       token.isFeedbackAdmin = isFeedbackAdmin({
         email: typeof token.email === "string" ? token.email : null,
@@ -201,7 +201,7 @@ export const authConfig = {
             token.error = undefined;
 
             if (sessionSubject && typeof refreshedTokens.access_token === "string") {
-              putUserTokens({
+              await putUserTokens({
                 sub: sessionSubject,
                 accessToken: refreshedTokens.access_token,
                 refreshToken:
@@ -232,8 +232,8 @@ export const authConfig = {
         tokenSub: typeof token.sub === "string" ? token.sub : null,
         fallbackUserId: session.user?.id ?? null,
       });
-      const currentAccessToken = sessionUserId ? getUserAccessToken(sessionUserId) : null;
-      const currentTokenEntry = sessionUserId ? getUserTokenEntry(sessionUserId) : null;
+      const currentAccessToken = sessionUserId ? await getUserAccessToken(sessionUserId) : null;
+      const currentTokenEntry = sessionUserId ? await getUserTokenEntry(sessionUserId) : null;
 
       session.accessToken = currentAccessToken ?? undefined;
       session.accessTokenExpires = typeof token.accessTokenExpires === "number" ? token.accessTokenExpires : undefined;
