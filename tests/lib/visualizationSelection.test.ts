@@ -8,11 +8,9 @@ function makeVisualization(args: {
   stats?: VisualizationResponseDTO["stats"];
 }): VisualizationResponseDTO {
   return {
-    type: "visualization_response",
     schema_version: 1,
     charts: args.charts ?? [],
     stats: args.stats ?? [],
-    warnings: [],
   };
 }
 
@@ -23,7 +21,7 @@ describe("resolveEffectiveVisualizationSelection", () => {
       stats: [
         {
           test_type: "MANN_WHITNEY_U_TEST",
-          status: "ok",
+          status: "success",
           title: "Mann-Whitney U Test",
         },
       ],
@@ -41,11 +39,8 @@ describe("resolveEffectiveVisualizationSelection", () => {
       charts: [
         {
           type: "LINE",
-          data: {
-            xAxis: { kind: "category", key: "x", label: "X" },
-            yAxis: { kind: "value", key: "y", label: "Y" },
-            series: [],
-          },
+          metadata: { title: "Chart" },
+          series: [],
         },
       ],
       stats: [],
