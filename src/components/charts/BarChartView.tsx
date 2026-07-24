@@ -16,6 +16,34 @@ interface Props {
   chart: BarChartDTO;
 }
 
+function hasValueAtBin(point: Record<string, number | string>, seriesNames: string[]) {
+  return seriesNames.some((seriesName) => {
+    const value = point[seriesName];
+    return typeof value === "number" && Number.isFinite(value) && value !== 0;
+  });
+}
+
+function trimEmptyEdgeBins(
+  points: Record<string, number | string>[],
+  seriesNames: string[],
+) {
+  const firstNonEmptyIndex = points.findIndex((point) => hasValueAtBin(point, seriesNames));
+  if (firstNonEmptyIndex === -1) {
+    return points;
+  }
+
+  let lastNonEmptyIndex = points.length - 1;
+  while (lastNonEmptyIndex > firstNonEmptyIndex) {
+    if (hasValueAtBin(points[lastNonEmptyIndex], seriesNames)) {
+      break;
+    }
+
+    lastNonEmptyIndex -= 1;
+  }
+
+  return points.slice(firstNonEmptyIndex, lastNonEmptyIndex + 1);
+}
+
 function formatNumericBinValue(value: number) {
   return Number.isInteger(value) ? String(value) : String(value);
 }
@@ -47,6 +75,7 @@ function buildBinLabel(
 }
 
 export function BarChartView({ chart }: Props) {
+  const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
   chart.series.forEach((s) =>
@@ -84,6 +113,7 @@ export function BarChartView({ chart }: Props) {
     });
     return point;
   });
+  const trimmedData = trimEmptyEdgeBins(data, seriesNames);
 
   const layout: "horizontal" | "vertical" =
     (chart.orientation ?? "vertical") === "horizontal" ? "vertical" : "horizontal";
@@ -93,7 +123,7 @@ export function BarChartView({ chart }: Props) {
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <RCBarChart data={data} layout={layout}>
+          <RCBarChart data={trimmedData} layout={layout}>
             <CartesianGrid strokeDasharray="3 3" />
             {layout === "horizontal" ? (
               <>
