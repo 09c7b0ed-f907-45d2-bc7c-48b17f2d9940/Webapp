@@ -16,6 +16,36 @@ interface Props {
   chart: BarChartDTO;
 }
 
+function formatNumericBinValue(value: number) {
+  return Number.isInteger(value) ? String(value) : String(value);
+}
+
+function buildBinLabel(
+  bin: string | number,
+  index: number,
+  bins: (string | number)[],
+  preferredLabel?: string,
+) {
+  if (preferredLabel) {
+    return preferredLabel;
+  }
+
+  if (typeof bin === "number") {
+    const nextBin = bins[index + 1];
+    if (typeof nextBin === "number") {
+      return `${formatNumericBinValue(bin)}-${formatNumericBinValue(nextBin)}`;
+    }
+
+    const previousBin = bins[index - 1];
+    if (typeof previousBin === "number") {
+      const step = bin - previousBin;
+      return `${formatNumericBinValue(bin)}-${formatNumericBinValue(bin + step)}`;
+    }
+  }
+
+  return String(bin);
+}
+
 export function BarChartView({ chart }: Props) {
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
@@ -29,8 +59,25 @@ export function BarChartView({ chart }: Props) {
     }),
   );
 
-  const data = bins.map((bin) => {
-    const point: Record<string, number | string> = { bin };
+  const binLabels = new Map<string, string>();
+  chart.series.forEach((series) => {
+    series.data.forEach((entry) => {
+      if (!entry.label) {
+        return;
+      }
+
+      const key = String(entry.x);
+      if (!binLabels.has(key)) {
+        binLabels.set(key, entry.label);
+      }
+    });
+  });
+
+  const data = bins.map((bin, index) => {
+    const point: Record<string, number | string> = {
+      bin,
+      binLabel: buildBinLabel(bin, index, bins, binLabels.get(String(bin))),
+    };
     chart.series.forEach((s) => {
       const val = s.data.find((p) => String(p.x) === String(bin))?.y ?? NaN;
       point[s.name] = val;
@@ -51,7 +98,7 @@ export function BarChartView({ chart }: Props) {
             {layout === "horizontal" ? (
               <>
                 <XAxis
-                  dataKey="bin"
+                  dataKey="binLabel"
                   label={{
                     value: chart.metadata?.x_axis?.label ?? "",
                     position: "insideBottomRight",
@@ -79,7 +126,7 @@ export function BarChartView({ chart }: Props) {
                 />
                 <YAxis
                   type="category"
-                  dataKey="bin"
+                  dataKey="binLabel"
                   label={{
                     value: chart.metadata?.x_axis?.label ?? "",
                     angle: -90,
