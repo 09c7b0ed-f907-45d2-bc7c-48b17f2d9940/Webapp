@@ -16,6 +16,7 @@ import type { StatisticalTestResultDTO } from "@/models/dto/response";
 import { MannWhitneyUView } from "@/components/charts/MannWhitneyUView";
 import { useTranslation } from 'react-i18next';
 import { useThread } from "@/components/ThreadContext";
+import { resolveEffectiveVisualizationSelection } from "@/components/ui/windows/visualizationSelection";
 import '@/i18n';
 
 export default function VisualizationWindow() {
@@ -36,11 +37,15 @@ export default function VisualizationWindow() {
     }
   }, [currentThreadId, setSelectedChartIndex, setSelectedStatisticsIndex, setVisualization]);
 
-  const activeChartIndex = selectedIndex;
-  const activeStatIndex = selectedStatIndex;
-
-  const showStat = activeStatIndex !== null && visualization?.stats && visualization.stats[activeStatIndex];
-  const showChart = activeChartIndex !== null && visualization?.charts && visualization.charts[activeChartIndex] && !showStat;
+  const selection = resolveEffectiveVisualizationSelection(
+    visualization,
+    selectedIndex,
+    selectedStatIndex,
+  );
+  const activeChartIndex = selection.effectiveChartIndex;
+  const activeStatIndex = selection.effectiveStatIndex;
+  const showStat = selection.showStat;
+  const showChart = selection.showChart;
 
   if (!visualization || (!showChart && !showStat)) {
     return (
@@ -53,6 +58,9 @@ export default function VisualizationWindow() {
 
   if (showStat) {
     const stats = visualization.stats as StatisticalTestResultDTO[];
+    if (activeStatIndex === null || activeStatIndex >= stats.length) {
+      return <div className="text-center text-muted-foreground p-4">{t('visualization.none')}</div>;
+    }
     const result = stats[activeStatIndex];
     if (result.test_type === 'MANN_WHITNEY_U_TEST') {
       return <div className="relative h-full w-full overflow-auto p-4"><MannWhitneyUView result={result} /></div>;
