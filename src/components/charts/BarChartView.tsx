@@ -16,7 +16,66 @@ interface Props {
   chart: BarChartDTO;
 }
 
+function hasValueAtBin(point: Record<string, number | string>, seriesNames: string[]) {
+  return seriesNames.some((seriesName) => {
+    const value = point[seriesName];
+    return typeof value === "number" && Number.isFinite(value) && value !== 0;
+  });
+}
+
+function trimEmptyEdgeBins(
+  points: Record<string, number | string>[],
+  seriesNames: string[],
+) {
+  const firstNonEmptyIndex = points.findIndex((point) => hasValueAtBin(point, seriesNames));
+  if (firstNonEmptyIndex === -1) {
+    return points;
+  }
+
+  let lastNonEmptyIndex = points.length - 1;
+  while (lastNonEmptyIndex > firstNonEmptyIndex) {
+    if (hasValueAtBin(points[lastNonEmptyIndex], seriesNames)) {
+      break;
+    }
+
+    lastNonEmptyIndex -= 1;
+  }
+
+  return points.slice(firstNonEmptyIndex, lastNonEmptyIndex + 1);
+}
+
+function formatNumericBinValue(value: number) {
+  return Number.isInteger(value) ? String(value) : String(value);
+}
+
+function buildBinLabel(
+  bin: string | number,
+  index: number,
+  bins: (string | number)[],
+  preferredLabel?: string,
+) {
+  if (preferredLabel) {
+    return preferredLabel;
+  }
+
+  if (typeof bin === "number") {
+    const nextBin = bins[index + 1];
+    if (typeof nextBin === "number") {
+      return `${formatNumericBinValue(bin)}-${formatNumericBinValue(nextBin)}`;
+    }
+
+    const previousBin = bins[index - 1];
+    if (typeof previousBin === "number") {
+      const step = bin - previousBin;
+      return `${formatNumericBinValue(bin)}-${formatNumericBinValue(bin + step)}`;
+    }
+  }
+
+  return String(bin);
+}
+
 export function BarChartView({ chart }: Props) {
+  const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
   chart.series.forEach((s) =>
@@ -29,14 +88,32 @@ export function BarChartView({ chart }: Props) {
     }),
   );
 
-  const data = bins.map((bin) => {
-    const point: Record<string, number | string> = { bin };
+  const binLabels = new Map<string, string>();
+  chart.series.forEach((series) => {
+    series.data.forEach((entry) => {
+      if (!entry.label) {
+        return;
+      }
+
+      const key = String(entry.x);
+      if (!binLabels.has(key)) {
+        binLabels.set(key, entry.label);
+      }
+    });
+  });
+
+  const data = bins.map((bin, index) => {
+    const point: Record<string, number | string> = {
+      bin,
+      binLabel: buildBinLabel(bin, index, bins, binLabels.get(String(bin))),
+    };
     chart.series.forEach((s) => {
       const val = s.data.find((p) => String(p.x) === String(bin))?.y ?? NaN;
       point[s.name] = val;
     });
     return point;
   });
+  const trimmedData = trimEmptyEdgeBins(data, seriesNames);
 
   const layout: "horizontal" | "vertical" =
     (chart.orientation ?? "vertical") === "horizontal" ? "vertical" : "horizontal";
@@ -46,12 +123,12 @@ export function BarChartView({ chart }: Props) {
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <RCBarChart data={data} layout={layout}>
+          <RCBarChart data={trimmedData} layout={layout}>
             <CartesianGrid strokeDasharray="3 3" />
             {layout === "horizontal" ? (
               <>
                 <XAxis
-                  dataKey="bin"
+                  dataKey="binLabel"
                   label={{
                     value: chart.metadata?.x_axis?.label ?? "",
                     position: "insideBottomRight",
@@ -79,7 +156,7 @@ export function BarChartView({ chart }: Props) {
                 />
                 <YAxis
                   type="category"
-                  dataKey="bin"
+                  dataKey="binLabel"
                   label={{
                     value: chart.metadata?.x_axis?.label ?? "",
                     angle: -90,
