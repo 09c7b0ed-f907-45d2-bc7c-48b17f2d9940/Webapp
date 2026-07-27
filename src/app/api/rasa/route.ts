@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getRasaUrlForRequest, withRasaAuth } from "@/lib/rasaConfig";
 import { fetchRasaTrackerEvents, mapRasaTrackerEvents } from "@/lib/rasaHistory";
-import { putUserAccessToken } from "@/lib/userTokenVault";
+import { putUserTokens } from "@/lib/userTokenVault";
 import { buildRasaSenderId } from "@/lib/rasaSender";
 import { publishCommittedHistoryItems, setCommittedCursorFloor } from "@/lib/sseBus";
 import {
@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
         typeof session.accessTokenExpires === "number" ? session.accessTokenExpires : undefined,
     };
 
-    putUserAccessToken({
-      sub: senderId,
+    await putUserTokens({
+      sub: userSub,
       ...tokenPayload,
     });
 

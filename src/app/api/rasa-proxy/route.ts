@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getUserAccessToken, inspectUserAccessTokenLookup } from "@/lib/userTokenVault";
+import { parseRasaSenderId } from "@/lib/rasaSender";
+import { getUserAccessToken } from "@/lib/userTokenVault";
 import {
   createTraceLogContext,
   readTraceId,
@@ -31,16 +32,7 @@ type ProxyErrorDetails = {
   upstreamStatus?: number | null;
   upstreamContentType?: string | null;
   reason?: string | null;
-  tokenLookup?: {
-    requestedKey: string;
-    requestedKeyFormat: string;
-    fallbackKey: string | null;
-    exactMatch: boolean;
-    fallbackMatch: boolean;
-    exactExpiresAt: number | null;
-    fallbackExpiresAt: number | null;
-    storage: string;
-  };
+  principalUserSub?: string | null;
 };
 
 function getAllowedTargets(): Record<string, string> {
@@ -99,7 +91,7 @@ function buildProxyErrorBody(message: string, details: ProxyErrorDetails) {
       upstreamStatus: details.upstreamStatus ?? null,
       upstreamContentType: details.upstreamContentType ?? null,
       reason: details.reason ?? null,
-      tokenLookup: details.tokenLookup ?? null,
+      principalUserSub: details.principalUserSub ?? null,
     },
   };
 }
@@ -218,19 +210,34 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const userAccessToken = getUserAccessToken(senderId);
+  const sender = parseRasaSenderId(senderId);
+  if (!sender) {
+    console.warn("[rasa-proxy] Invalid senderId format", createTraceLogContext(traceId, {
+      senderId,
+      target,
+      path: request.path,
+    }));
+    return createProxyErrorResponse("Invalid senderId", 400, {
+      traceId,
+      target,
+      path: request.path,
+      reason: "senderId must be '<userSub>' or '<userSub>:thread:<id>'",
+    });
+  }
+
+  const principalUserSub = sender.userSub;
+  const userAccessToken = await getUserAccessToken(principalUserSub);
   if (!userAccessToken) {
-    const tokenLookup = inspectUserAccessTokenLookup(senderId);
     console.warn("[rasa-proxy] User token unavailable", createTraceLogContext(traceId, {
       senderId,
-      tokenLookup,
+      principalUserSub,
     }));
     return createProxyErrorResponse("User token unavailable", 401, {
       traceId,
       target,
       path: request.path,
-      reason: "No cached user access token was found for senderId",
-      tokenLookup,
+      reason: "No cached user access token was found for principal userSub",
+      principalUserSub,
     });
   }
 
