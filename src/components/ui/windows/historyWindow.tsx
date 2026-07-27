@@ -14,6 +14,8 @@ import { useThread } from "@/components/ThreadContext";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "../tooltip";
 
 export default function HistoryWindow() {
+  const cardAspectRatio = 6 / 4;
+  const historyRowPadding = 16;
   const { currentThreadId } = useThread();
   const history = useChatStore((s) => s.history);
   const setHistory = useChatStore((s) => s.setHistory);
@@ -114,49 +116,38 @@ export default function HistoryWindow() {
 
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState<number>(0);
 
   useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        const { width, height } = containerRef.current.getBoundingClientRect();
-        setContainerDimensions({ width, height });
-      }
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateCardHeight = () => {
+      setCardHeight(Math.max(viewport.clientHeight - historyRowPadding, 0));
     };
 
-    const observedElement = containerRef.current;
-    let resizeObserver: ResizeObserver | null = null;
-    if (observedElement) {
-      resizeObserver = new ResizeObserver(updateDimensions);
-      resizeObserver.observe(observedElement);
-    }
-    updateDimensions();
+    updateCardHeight();
 
-    window.addEventListener("resize", updateDimensions);
+    const resizeObserver = new ResizeObserver(() => {
+      updateCardHeight();
+    });
+
+    resizeObserver.observe(viewport);
 
     return () => {
-      window.removeEventListener("resize", updateDimensions);
-      if (resizeObserver && observedElement) {
-        resizeObserver.unobserve(observedElement);
-      }
+      resizeObserver.disconnect();
     };
   }, []);
-
-  const cardHeight = Math.max(100, containerDimensions.height - 60);
-  const cardWidth = Math.max(180, cardHeight * 0.75);
-  
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
     <div ref={containerRef} className="w-full h-full flex flex-col p-4">
       <p className=" font-semibold text-primary">{t('history.title')}</p>
       <ScrollArea
-        ref={scrollRef}
+        viewportRef={viewportRef}
         className="w-full flex-1"
         onWheel={(e) => {
-          const viewport = scrollRef.current?.querySelector(
-          "[data-radix-scroll-area-viewport]"
-          ) as HTMLDivElement | null;
+          const viewport = viewportRef.current;
 
           if (!viewport) return;
 
@@ -166,7 +157,7 @@ export default function HistoryWindow() {
           }
         }}
       >
-        <div ref={scrollRef}className="flex flex-1 flex-row gap-2 p-2">
+        <div className="box-border flex h-full min-h-0 flex-row items-stretch gap-2 overflow-y-hidden p-2">
           <TooltipProvider>
             {history.map((viz, historyIndex) => {
               const charts = (viz.charts ?? []) as ChartDTO[];
@@ -187,16 +178,16 @@ export default function HistoryWindow() {
                         }}
                         onClick={() => handleChartClick(viz, chartIndex)}
                         style={{
-                          width: `${cardWidth}px`,
-                          height: `${cardHeight}px`,
+                          height: cardHeight > 0 ? `${cardHeight}px` : undefined,
+                          width: cardHeight > 0 ? `${cardHeight * cardAspectRatio}px` : undefined,
                         }}
                         className={clsx(
-                          "cursor-pointer transition-all duration-300 flex-shrink-0 min-h-0 flex items-center justify-center ",
+                          "flex min-h-0 flex-shrink-0 cursor-pointer items-stretch justify-center transition-all duration-300",
                           isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
                         )}
                       >
-                        <div className="w-full h-full flex flex-col justify-between border hover:bg-black/5">
-                          <div className="w-full flex-1 min-w-0 flex items-center justify-center overflow-hidden">
+                        <div className="flex h-full w-full min-h-0 flex-col justify-between border hover:bg-black/5">
+                          <div className="flex min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden">
                             <div className="w-4/5 h-4/5">
                               <ChartThumbnail chart={item} />
                             </div>
@@ -246,16 +237,16 @@ export default function HistoryWindow() {
                         }}
                         onClick={() => handleStatClick(viz, statIndex)}
                         style={{
-                          width: `${cardWidth}px`,
-                          height: `${cardHeight}px`,
+                          height: cardHeight > 0 ? `${cardHeight}px` : undefined,
+                          width: cardHeight > 0 ? `${cardHeight * cardAspectRatio}px` : undefined,
                         }}
                         className={clsx(
-                          "cursor-pointer transition-all duration-300 flex-shrink-0 min-h-0 flex items-center justify-center ",
+                          "flex min-h-0 flex-shrink-0 cursor-pointer items-stretch justify-center transition-all duration-300",
                           isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
                         )}
                       >
-                        <div className="w-full h-full flex flex-col justify-between border hover:bg-black/5">
-                          <div className="w-full flex-1 min-w-0 flex items-center justify-center overflow-hidden p-3">
+                        <div className="flex h-full w-full min-h-0 flex-col justify-between border hover:bg-black/5">
+                          <div className="flex min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden p-3">
                             <div className="w-4/5 h-4/5">
                               {item.test_type === 'MANN_WHITNEY_U_TEST' ? (
                                 <MannWhitneyUThumbnail result={item} />
