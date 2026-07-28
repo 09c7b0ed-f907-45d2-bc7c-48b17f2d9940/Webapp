@@ -11,12 +11,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { LineChartDTO } from "@/models/dto/charts";
+import { trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
 
 interface Props {
   chart: LineChartDTO;
 }
 
 export function LineChartView({ chart }: Props) {
+  const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
   chart.series.forEach((s) =>
@@ -37,13 +39,14 @@ export function LineChartView({ chart }: Props) {
     });
     return point;
   });
+  const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
 
   return (
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 20, right: 20, bottom: 0, left: 20 }}>
+          <LineChart data={trimmedData} margin={{ top: 20, right: 20, bottom: 0, left: 20 }}>
             <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="bin"

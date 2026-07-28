@@ -29,9 +29,11 @@ import type {
   HistogramChartDTO,
   WaterfallChartDTO,
 } from "@/models/dto/charts";
+import { trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
 
 // LINE CHART THUMBNAIL
 export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {
+  const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
   chart.series.forEach((s) =>
@@ -52,10 +54,11 @@ export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {
     });
     return point;
   });
+  const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+      <LineChart data={trimmedData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
         {chart.series.map((s, i) => (
           <Line
             key={s.name}
@@ -119,6 +122,7 @@ export function AreaChartThumbnail({ chart }: { chart: AreaChartDTO }) {
 
 // BAR CHART THUMBNAIL
 export function BarChartThumbnail({ chart }: { chart: BarChartDTO }) {
+  const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
   chart.series.forEach((s) =>
@@ -132,17 +136,18 @@ export function BarChartThumbnail({ chart }: { chart: BarChartDTO }) {
   );
 
   const data = bins.map((bin) => {
-    const point: Record<string, number | string> = { bin };
+    const point: Record<string, number | string | null> = { bin };
     chart.series.forEach((s) => {
-      const val = s.data.find((p) => String(p.x) === String(bin))?.y ?? NaN;
-      point[s.name] = val;
+      const val = s.data.find((p) => String(p.x) === String(bin))?.y;
+      point[s.name] = typeof val === "number" && val === 0 ? null : (val ?? null);
     });
     return point;
   });
+  const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
 
   return (
     <ResponsiveContainer width="100%" height="100%">
-      <RCBarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+      <RCBarChart data={trimmedData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
         {chart.series.map((s, i) => (
           <Bar
             key={s.name}

@@ -11,37 +11,10 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { BarChartDTO } from "@/models/dto/charts";
+import { trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
 
 interface Props {
   chart: BarChartDTO;
-}
-
-function hasValueAtBin(point: Record<string, number | string>, seriesNames: string[]) {
-  return seriesNames.some((seriesName) => {
-    const value = point[seriesName];
-    return typeof value === "number" && Number.isFinite(value) && value !== 0;
-  });
-}
-
-function trimEmptyEdgeBins(
-  points: Record<string, number | string>[],
-  seriesNames: string[],
-) {
-  const firstNonEmptyIndex = points.findIndex((point) => hasValueAtBin(point, seriesNames));
-  if (firstNonEmptyIndex === -1) {
-    return points;
-  }
-
-  let lastNonEmptyIndex = points.length - 1;
-  while (lastNonEmptyIndex > firstNonEmptyIndex) {
-    if (hasValueAtBin(points[lastNonEmptyIndex], seriesNames)) {
-      break;
-    }
-
-    lastNonEmptyIndex -= 1;
-  }
-
-  return points.slice(firstNonEmptyIndex, lastNonEmptyIndex + 1);
 }
 
 function formatNumericBinValue(value: number) {
@@ -113,7 +86,7 @@ export function BarChartView({ chart }: Props) {
     });
     return point;
   });
-  const trimmedData = trimEmptyEdgeBins(data, seriesNames);
+  const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
 
   const layout: "horizontal" | "vertical" =
     (chart.orientation ?? "vertical") === "horizontal" ? "vertical" : "horizontal";
