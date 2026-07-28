@@ -30,8 +30,7 @@ export function ScatterChartView({ chart }: Props) {
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart margin={{ top: 10, right: 0, bottom: 0, left: 0 }}>
+          <ScatterChart margin={{ top: 10, right: 0, bottom: 0, left: 0 }} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="x"
@@ -70,7 +69,6 @@ export function ScatterChartView({ chart }: Props) {
               />
             ))}
           </ScatterChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );

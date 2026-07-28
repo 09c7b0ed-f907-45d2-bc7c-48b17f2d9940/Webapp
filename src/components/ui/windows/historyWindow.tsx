@@ -188,8 +188,8 @@ export default function HistoryWindow() {
                       >
                         <div className="flex h-full w-full min-h-0 flex-col justify-between border hover:bg-black/5">
                           <div className="flex min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden">
-                            <div className="w-4/5 h-4/5">
-                              <ChartThumbnail chart={item} />
+                            <div className="w-4/5 h-4/5 min-w-0 min-h-0">
+                              <ChartThumbnail chart={item}/>
                             </div>
                           </div>
                           <div className="p-4 text-sm flex flex-col flex-shrink-0 flex-grow-0">
