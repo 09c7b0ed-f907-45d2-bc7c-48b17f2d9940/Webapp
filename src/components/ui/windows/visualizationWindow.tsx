@@ -131,5 +131,5 @@ export default function VisualizationWindow() {
     return null;
   }
 
-  return <div className="relative h-full w-full">{content}</div>;
+  return <div className="relative h-full w-full min-h-0 min-w-0 overflow-hidden">{content}</div>;
 }
