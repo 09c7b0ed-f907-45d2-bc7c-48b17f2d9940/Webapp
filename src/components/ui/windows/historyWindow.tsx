@@ -9,7 +9,7 @@ import clsx from "clsx";
 import { useTranslation } from 'react-i18next';
 import '@/i18n';
 import { ChartThumbnail } from "@/components/ui/chart-thumbnail";
-import { MannWhitneyUThumbnail } from "@/components/charts/MannWhitneyUThumbnail";
+import { MannWhitneyUThumbnail } from "@/components/charts/MannWhitneyUThumbnailView";
 import { useThread } from "@/components/ThreadContext";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "../tooltip";
 
