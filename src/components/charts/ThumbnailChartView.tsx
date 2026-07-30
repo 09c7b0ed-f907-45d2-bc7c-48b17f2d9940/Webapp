@@ -29,7 +29,7 @@ import type {
   WaterfallChartDTO,
 } from "@/models/dto/charts";
 import { trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
-import { Shapes } from "lucide-react";
+
 
 // LINE CHART THUMBNAIL
 export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {

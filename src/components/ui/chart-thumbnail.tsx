@@ -11,7 +11,7 @@ import {
   HistogramChartThumbnail,
   WaterfallChartThumbnail,
   BoxChartThumbnail,
-} from "@/components/charts/chart-thumbnail-view";
+} from "@/components/charts/ThumbnailChartView";
 
 interface ChartThumbnailProps {
   chart: ChartDTO;
