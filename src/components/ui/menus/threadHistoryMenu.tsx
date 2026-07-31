@@ -330,6 +330,7 @@ export function SideMenu() {
                 <Field className="mb-6">
                   <Input
                     name="name"
+                    autoComplete="off"
                     defaultValue={t('threads.name.default') + (" ") + (threads.length + 1)}
                   />
                 </Field>
@@ -378,6 +379,7 @@ export function SideMenu() {
               </DialogHeader>
               <Field className="mb-4">
                 <Input
+                  autoComplete="off"
                   autoFocus
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
@@ -481,6 +483,7 @@ export function SideMenu() {
                           <Field className="mb-6">
                             <Input
                               name="name"
+                              autoComplete="off"
                               defaultValue={thread.name}
                             />
                           </Field>

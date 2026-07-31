@@ -239,6 +239,7 @@ export function ChatInput({
       <div className="relative flex-1">
         <Textarea
           ref={textareaRef}
+          autoComplete="off"
           placeholder={computedPlaceholder}
           aria-label={computedPlaceholder}
           value={message}
