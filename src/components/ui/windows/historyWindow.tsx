@@ -9,7 +9,7 @@ import clsx from "clsx";
 import { useTranslation } from 'react-i18next';
 import '@/i18n';
 import { ChartThumbnail } from "@/components/ui/chart-thumbnail";
-import { MannWhitneyUThumbnail } from "@/components/charts/MannWhitneyUThumbnail";
+import { MannWhitneyUThumbnail } from "@/components/charts/MannWhitneyUThumbnailView";
 import { useThread } from "@/components/ThreadContext";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "../tooltip";
 
@@ -28,7 +28,7 @@ export default function HistoryWindow() {
   const visualization = useChatStore((s) => s.visualization);
   const { t } = useTranslation('common');
 
-  const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
+const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     if (!currentThreadId) {
@@ -71,7 +71,7 @@ export default function HistoryWindow() {
 
   // Clear refs when display history changes
   useEffect(() => {
-    chartRefs.current = [];
+    chartRefs.current = {};
   }, [history]);
 
   useEffect(() => {
@@ -95,7 +95,7 @@ export default function HistoryWindow() {
       const refKey = selectedChartIndex !== null
         ? `${historyIndex}-chart-${selectedChartIndex}`
         : `${historyIndex}-stat-${selectedStatisticsIndex}`;
-      const ref = chartRefs.current.find((el) => el?.dataset.refkey === refKey);
+      const ref = chartRefs.current[refKey];
       if (ref) {
         ref.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
       }
@@ -141,11 +141,11 @@ export default function HistoryWindow() {
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full h-full flex flex-col p-4">
+    <div ref={containerRef} className="w-full h-full min-h-0 min-w-0 flex flex-col p-4">
       <p className=" font-semibold text-primary">{t('history.title')}</p>
       <ScrollArea
         viewportRef={viewportRef}
-        className="w-full flex-1"
+        className="w-full flex-1 min-h-0 min-w-0"
         onWheel={(e) => {
           const viewport = viewportRef.current;
 
@@ -173,23 +173,22 @@ export default function HistoryWindow() {
                         ref={(el) => {
                           if (el) {
                             el.dataset.refkey = refKey;
-                            chartRefs.current.push(el);
+                            chartRefs.current[refKey] = el;
                           }
                         }}
                         onClick={() => handleChartClick(viz, chartIndex)}
-                        style={{
-                          height: cardHeight > 0 ? `${cardHeight}px` : undefined,
-                          width: cardHeight > 0 ? `${cardHeight * cardAspectRatio}px` : undefined,
-                        }}
+                        style={{ 
+                          height: cardHeight > 0 ? `${cardHeight}px` : undefined, 
+                          aspectRatio: `${cardAspectRatio}`, } }
                         className={clsx(
-                          "flex min-h-0 flex-shrink-0 cursor-pointer items-stretch justify-center transition-all duration-300",
-                          isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
+                          "flex min-h-0 flex-shrink-0 cursor-pointer items-stretch justify-center ",
+                          isSelected ? "ring-3 ring-blue-500" : "hover:ring- hover:ring-muted"
                         )}
                       >
-                        <div className="flex h-full w-full min-h-0 flex-col justify-between border hover:bg-black/5">
+                        <div className="flex h-full w-full min-h-0 flex-col justify-between border hover:bg-black/5" style={{contain: 'layout paint size'}}>
                           <div className="flex min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden">
-                            <div className="w-4/5 h-4/5">
-                              <ChartThumbnail chart={item} />
+                            <div className="w-full h-full min-w-0 min-h-0">
+                              <ChartThumbnail chart={item}/>
                             </div>
                           </div>
                           <div className="p-4 text-sm flex flex-col flex-shrink-0 flex-grow-0">
@@ -232,16 +231,16 @@ export default function HistoryWindow() {
                         ref={(el) => {
                           if (el) {
                             el.dataset.refkey = refKey;
-                            chartRefs.current.push(el);
+                            chartRefs.current[refKey] = el;
                           }
                         }}
                         onClick={() => handleStatClick(viz, statIndex)}
                         style={{
                           height: cardHeight > 0 ? `${cardHeight}px` : undefined,
-                          width: cardHeight > 0 ? `${cardHeight * cardAspectRatio}px` : undefined,
+                          aspectRatio: `${cardAspectRatio}`,
                         }}
                         className={clsx(
-                          "flex min-h-0 flex-shrink-0 cursor-pointer items-stretch justify-center transition-all duration-300",
+                          "flex min-h-0 flex-shrink-0 cursor-pointer items-stretch justify-center",
                           isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
                         )}
                       >

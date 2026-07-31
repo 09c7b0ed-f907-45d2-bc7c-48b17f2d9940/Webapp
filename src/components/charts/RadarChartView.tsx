@@ -30,8 +30,7 @@ export function RadarChartView({ chart }: Props) {
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <RCRadarChart data={data}>
+          <RCRadarChart data={data} responsive={true} style={{ width: '100%', height: '100%' }}>
             <PolarGrid />
             <PolarAngleAxis dataKey="axis" />
             <PolarRadiusAxis />
@@ -52,7 +51,6 @@ export function RadarChartView({ chart }: Props) {
               />
             ))}
           </RCRadarChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );

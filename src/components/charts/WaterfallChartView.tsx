@@ -37,8 +37,7 @@ export function WaterfallChartView({ chart }: Props) {
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} stackOffset="sign">
+          <BarChart data={data} stackOffset="sign" responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="label"
@@ -68,7 +67,6 @@ export function WaterfallChartView({ chart }: Props) {
               isAnimationActive={false}
             />
           </BarChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );

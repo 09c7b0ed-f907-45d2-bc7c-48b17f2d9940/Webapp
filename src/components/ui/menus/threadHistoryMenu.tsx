@@ -524,7 +524,9 @@ export function SideMenu() {
                           }}
                         >
                           <AlertDialogHeader>
-                            <AlertDialogTitle>{t('threads.delete.title')} {thread.name}?</AlertDialogTitle>
+                            <AlertDialogTitle className=" break-all">
+                              {t('threads.delete.title')} {thread.name}?
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
                               {t('threads.delete.description')}
                             </AlertDialogDescription>

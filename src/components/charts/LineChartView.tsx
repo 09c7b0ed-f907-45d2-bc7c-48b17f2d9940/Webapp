@@ -45,8 +45,7 @@ export function LineChartView({ chart }: Props) {
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={trimmedData} margin={{ top: 20, right: 20, bottom: 0, left: 20 }}>
+          <LineChart data={trimmedData} margin={{ top: 20, right: 20, bottom: 0, left: 20 }} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="bin"
@@ -102,7 +101,6 @@ export function LineChartView({ chart }: Props) {
               />
             ))}
           </LineChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );

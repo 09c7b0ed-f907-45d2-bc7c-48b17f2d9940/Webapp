@@ -23,7 +23,7 @@ export function HistogramChartView({ chart }: Props) {
     value: chart.cumulative ? bin.density ?? bin.frequency : bin.frequency,
   }));
 
-  const yLabel = chart.cumulative
+    const yLabel = chart.cumulative
     ? chart.metadata?.y_axis?.label ?? "Density / Cumulative"
     : chart.metadata?.y_axis?.label ?? "Frequency";
 
@@ -31,8 +31,7 @@ export function HistogramChartView({ chart }: Props) {
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data}>
+          <BarChart data={data} barGap={-0.1} barCategoryGap={-.5} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="range"
@@ -61,9 +60,9 @@ export function HistogramChartView({ chart }: Props) {
               name={chart.metadata?.y_axis?.label ?? ""}
               fill="hsl(200, 70%, 50%)"
               isAnimationActive={false}
+
             />
           </BarChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );
