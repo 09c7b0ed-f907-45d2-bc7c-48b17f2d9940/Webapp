@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { PieChartDTO } from "@/models/dto/charts";
+import { getSeriesColor } from "@/lib/chart-utils";
 
 interface Props {
   chart: PieChartDTO;
@@ -39,7 +40,7 @@ export function PieChartView({ chart }: Props) {
               {chart.data.map((s, i) => (
                 <Cell
                   key={`slice-${i}`}
-                  fill={s.color || `hsl(${(i * 70) % 360}, 70%, 50%)`}
+                  fill={s.color || getSeriesColor(i)}
                 />
               ))}
             </Pie>

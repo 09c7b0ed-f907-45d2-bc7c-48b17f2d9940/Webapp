@@ -28,7 +28,7 @@ import type {
   HistogramChartDTO,
   WaterfallChartDTO,
 } from "@/models/dto/charts";
-import { trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
+import { getSeriesColor, trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
 
 const THUMBNAIL_MARGIN = { top: 5, right: 10, bottom: 0, left: 10 };
 
@@ -65,7 +65,7 @@ export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {
             key={s.name}
             type="monotone"
             dataKey={s.name}
-            stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+            stroke={getSeriesColor(i)}
             strokeWidth={2}
             dot={false}
             activeDot={false}
@@ -109,8 +109,8 @@ export function AreaChartThumbnail({ chart }: { chart: AreaChartDTO }) {
             key={s.name}
             type="monotone"
             dataKey={s.name}
-            stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
-            fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+            stroke={getSeriesColor(i)}
+            fill={getSeriesColor(i)}
             fillOpacity={0.6}
             activeDot={false}
             isAnimationActive={false}
@@ -151,7 +151,7 @@ export function BarChartThumbnail({ chart }: { chart: BarChartDTO }) {
           <Bar
             key={s.name}
             dataKey={s.name}
-            fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+            fill={getSeriesColor(i)}
             isAnimationActive={false}
           />
         ))}
@@ -178,7 +178,7 @@ export function PieChartThumbnail({ chart }: { chart: PieChartDTO }) {
           {chart.data.map((s, i) => (
             <Cell
               key={`slice-${i}`}
-              fill={s.color || `hsl(${(i * 70) % 360}, 70%, 50%)`}
+              fill={s.color || getSeriesColor(i)}
             />
           ))}
         </Pie>
@@ -205,8 +205,8 @@ export function RadarChartThumbnail({ chart }: { chart: RadarChartDTO }) {
             key={s.name}
             name={s.name}
             dataKey={s.name}
-            stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
-            fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+            stroke={getSeriesColor(i)}
+            fill={getSeriesColor(i)}
             fillOpacity={0.3}
             isAnimationActive={false}
             activeDot={false}
@@ -227,7 +227,7 @@ export function ScatterChartThumbnail({ chart }: { chart: ScatterChartDTO }) {
             key={s.name}
             name={s.name}
             data={s.data.map((p) => ({ x: p.x, y: p.y }))}
-            fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+            fill={getSeriesColor(i)}
             shape="circle"
             fillOpacity={0.9}
             isAnimationActive={false}

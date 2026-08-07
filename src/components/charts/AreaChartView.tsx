@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { AreaChartDTO } from "@/models/dto/charts";
+import { getSeriesColor } from "@/lib/chart-utils";
 
 interface Props {
   chart: AreaChartDTO;
@@ -70,8 +71,8 @@ export function AreaChartView({ chart }: Props) {
                 key={s.name}
                 type="monotone"
                 dataKey={s.name}
-                stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
-                fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+                stroke={getSeriesColor(i)}
+                fill={getSeriesColor(i)}
                 fillOpacity={0.25}
                 stackId={chart.stacked ? "1" : undefined}
                 isAnimationActive={false}

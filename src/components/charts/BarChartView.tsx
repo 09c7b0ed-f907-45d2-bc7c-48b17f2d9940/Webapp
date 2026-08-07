@@ -8,10 +8,10 @@ import {
   Tooltip,
   Legend,
   CartesianGrid,
-  ResponsiveContainer,
 } from "recharts";
 import type { BarChartDTO } from "@/models/dto/charts";
-import { trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
+import { trimEmptyEdgeChartPoints, getDynamicCategoryTickLayout, getSeriesColor } from "@/lib/chart-utils";
+import { useElementWidth } from "@/hooks/use-element-width";
 
 interface Props {
   chart: BarChartDTO;
@@ -48,6 +48,7 @@ function buildBinLabel(
 }
 
 export function BarChartView({ chart }: Props) {
+  const { elementRef: chartContainerRef, widthPx: chartWidthPx } = useElementWidth<HTMLDivElement>(1000);
   const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
@@ -87,6 +88,16 @@ export function BarChartView({ chart }: Props) {
     return point;
   });
   const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
+  const tickLayout = getDynamicCategoryTickLayout({
+    chartWidthPx: chartWidthPx,
+    pointCount: trimmedData.length,
+    rotateThresholdPx: 70,
+    horizontalMinTickSpacingPx: 10,
+    rotatedMinTickSpacingPx: 30,
+    rotatedAngle: -45,
+    labelHeightBig: 70,
+    labelHeightSmall: 50,
+  });
 
   const layout: "horizontal" | "vertical" =
     (chart.orientation ?? "vertical") === "horizontal" ? "vertical" : "horizontal";
@@ -94,12 +105,16 @@ export function BarChartView({ chart }: Props) {
   return (
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
-      <div className="flex-1 min-h-0">
+      <div ref={chartContainerRef} className="flex-1 min-h-0">
           <RCBarChart data={trimmedData} layout={layout} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
             {layout === "horizontal" ? (
               <>
                 <XAxis
+                  height={tickLayout.height}
+                  angle={tickLayout.angle}
+                  textAnchor={tickLayout.textAnchor}
+                  interval={tickLayout.interval}
                   dataKey="binLabel"
                   label={{
                     value: chart.metadata?.x_axis?.label ?? "",
@@ -148,7 +163,7 @@ export function BarChartView({ chart }: Props) {
               <Bar
                 key={s.name}
                 dataKey={s.name}
-                fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+                fill={getSeriesColor(i)}
                 stackId={chart.stacked ? "1" : undefined}
                 isAnimationActive={false}
               />
