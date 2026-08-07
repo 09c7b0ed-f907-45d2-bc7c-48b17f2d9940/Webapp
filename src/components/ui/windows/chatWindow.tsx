@@ -244,6 +244,8 @@ async function fetchThreadHistory(threadId: number, seenPlanKeys: Set<string>): 
   };
 }
 
+const LONG_ACTION_LOCK_TTL_MS = 3 * 60 * 1000;
+
 
 export default function ChatWindow() {
   const { currentThreadId } = useThread();
@@ -253,6 +255,7 @@ export default function ChatWindow() {
   const [pendingRequests, setPendingRequests] = useState(0);
   const [activeLongActionJobCount, setActiveLongActionJobCount] = useState(0);
   const activeLongActionJobsRef = useRef<Set<string>>(new Set());
+  const activeLongActionLockTimersRef = useRef<Map<string, number>>(new Map());
   const seenPlanMessageKeysRef = useRef<Set<string>>(new Set());
   const seenCommittedEventIndexesRef = useRef<Set<number>>(new Set());
   const language = useSettingsStore((s) => s.language);
@@ -315,11 +318,29 @@ export default function ChatWindow() {
         activeLongActionJobsRef.current.add(jobId);
         setActiveLongActionJobCount(activeLongActionJobsRef.current.size);
       }
+
+      const existingTimer = activeLongActionLockTimersRef.current.get(jobId);
+      if (typeof existingTimer === "number") {
+        window.clearTimeout(existingTimer);
+      }
+
+      const watchdogId = window.setTimeout(() => {
+        activeLongActionJobsRef.current.delete(jobId);
+        activeLongActionLockTimersRef.current.delete(jobId);
+        setActiveLongActionJobCount(activeLongActionJobsRef.current.size);
+        setMessages((prev) => prev.filter((message) => message.kind !== "progress"));
+      }, LONG_ACTION_LOCK_TTL_MS);
+      activeLongActionLockTimersRef.current.set(jobId, watchdogId);
       return;
     }
 
     if (obj.type === "release") {
       const jobId = typeof obj.jobId === "string" && obj.jobId.trim().length > 0 ? obj.jobId.trim() : "default";
+      const timerId = activeLongActionLockTimersRef.current.get(jobId);
+      if (typeof timerId === "number") {
+        window.clearTimeout(timerId);
+      }
+      activeLongActionLockTimersRef.current.delete(jobId);
       activeLongActionJobsRef.current.delete(jobId);
       setActiveLongActionJobCount(activeLongActionJobsRef.current.size);
       setMessages((prev) => prev.filter((message) => message.kind !== "progress"));
@@ -435,6 +456,10 @@ export default function ChatWindow() {
     seenPlanMessageKeysRef.current.clear();
     seenCommittedEventIndexesRef.current.clear();
     activeLongActionJobsRef.current.clear();
+    for (const timerId of activeLongActionLockTimersRef.current.values()) {
+      window.clearTimeout(timerId);
+    }
+    activeLongActionLockTimersRef.current.clear();
     setActiveLongActionJobCount(0);
     setPendingRequests(0);
 
@@ -602,7 +627,7 @@ export default function ChatWindow() {
   return (
     <div className=" flex flex-col h-full">
       <div className="gap-0 bg-transparent relative min-h-0 flex-none"  >  
-        <div className="w-[101%] h-15 rounded-t-xl z-10 flex items-center justify-between px-10 pr-4 bg-gradient-to-tl from-secondary to-primary">
+        <div className="w-full h-15 rounded-t-xl z-10 flex items-center justify-between px-10 pr-4 bg-gradient-to-tl from-secondary to-primary">
           <div className="flex h-full min-h-0 w-full items-center justify-between gap-2">
             <ThreadName />
             <InfoAlertWindow />

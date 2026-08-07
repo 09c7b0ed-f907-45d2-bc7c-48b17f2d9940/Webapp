@@ -30,8 +30,7 @@ export function ScatterChartView({ chart }: Props) {
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <ScatterChart>
+          <ScatterChart margin={{ top: 10, right: 0, bottom: 0, left: 0 }} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="x"
@@ -52,7 +51,11 @@ export function ScatterChartView({ chart }: Props) {
                 dx: -20,
               }}
             />
-            <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+            <Tooltip 
+              cursor={{ fill: "oklch(from var(--foreground) l c h / 0.35)", strokeDasharray: "3 3" }} 
+              animationEasing="spring" 
+              contentStyle={{ backgroundColor: "var(--card)", borderRadius: "var(--radius)",  minWidth: "100px", fontSize: "0.75rem", fontWeight: "bold" }}
+            />
             <Legend />
             {chart.series.map((series, index) => (
               <Scatter
@@ -62,10 +65,10 @@ export function ScatterChartView({ chart }: Props) {
                 data={data.filter((d) => d.series === series.name)}
                 fill={`hsl(${(index * 70) % 360}, 70%, 50%)`}
                 isAnimationActive={false}
+                shape={<circle r={10} />}
               />
             ))}
           </ScatterChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );

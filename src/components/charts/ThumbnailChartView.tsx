@@ -7,14 +7,15 @@ import {
   Area,
   BarChart as RCBarChart,
   Bar,
-  ResponsiveContainer,
   PieChart as RCPieChart,
   Pie,
-  Cell,
   RadarChart as RCRadarChart,
   Radar,
   ScatterChart as RCScatterChart,
   Scatter,
+  XAxis,
+  YAxis,
+  Cell,
 } from "recharts";
 import type { 
   LineChartDTO, 
@@ -27,9 +28,12 @@ import type {
   HistogramChartDTO,
   WaterfallChartDTO,
 } from "@/models/dto/charts";
+import { trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
+
 
 // LINE CHART THUMBNAIL
 export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {
+  const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
   chart.series.forEach((s) =>
@@ -50,10 +54,10 @@ export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {
     });
     return point;
   });
+  const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+      <LineChart data={trimmedData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} responsive={true} style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
         {chart.series.map((s, i) => (
           <Line
             key={s.name}
@@ -62,12 +66,12 @@ export function LineChartThumbnail({ chart }: { chart: LineChartDTO }) {
             stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
             strokeWidth={2}
             dot={false}
+            activeDot={false}
             connectNulls={false}
             isAnimationActive={false}
           />
         ))}
       </LineChart>
-    </ResponsiveContainer>
   );
 }
 
@@ -95,8 +99,7 @@ export function AreaChartThumbnail({ chart }: { chart: AreaChartDTO }) {
   });
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <RCAreaChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+      <RCAreaChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} responsive={true} style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
         {chart.series.map((s, i) => (
           <Area
             key={s.name}
@@ -105,16 +108,17 @@ export function AreaChartThumbnail({ chart }: { chart: AreaChartDTO }) {
             stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
             fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
             fillOpacity={0.6}
+            activeDot={false}
             isAnimationActive={false}
           />
         ))}
       </RCAreaChart>
-    </ResponsiveContainer>
   );
 }
 
 // BAR CHART THUMBNAIL
 export function BarChartThumbnail({ chart }: { chart: BarChartDTO }) {
+  const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
   chart.series.forEach((s) =>
@@ -128,17 +132,17 @@ export function BarChartThumbnail({ chart }: { chart: BarChartDTO }) {
   );
 
   const data = bins.map((bin) => {
-    const point: Record<string, number | string> = { bin };
+    const point: Record<string, number | string | null> = { bin };
     chart.series.forEach((s) => {
-      const val = s.data.find((p) => String(p.x) === String(bin))?.y ?? NaN;
-      point[s.name] = val;
+      const val = s.data.find((p) => String(p.x) === String(bin))?.y;
+      point[s.name] = typeof val === "number" && val === 0 ? null : (val ?? null);
     });
     return point;
   });
+  const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <RCBarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+      <RCBarChart data={trimmedData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} responsive={true} style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
         {chart.series.map((s, i) => (
           <Bar
             key={s.name}
@@ -148,25 +152,24 @@ export function BarChartThumbnail({ chart }: { chart: BarChartDTO }) {
           />
         ))}
       </RCBarChart>
-    </ResponsiveContainer>
   );
 }
 
 // PIE CHART THUMBNAIL
 export function PieChartThumbnail({ chart }: { chart: PieChartDTO }) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <RCPieChart>
+      <RCPieChart responsive={true} style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
         <Pie
           data={chart.data}
           dataKey="value"
           nameKey="label"
           cx="50%"
           cy="50%"
-          outerRadius={50}
+          outerRadius={"80%"}
           innerRadius={chart.donut ? 30 : 0}
           label={false}
           isAnimationActive={false}
+
         >
           {chart.data.map((s, i) => (
             <Cell
@@ -176,7 +179,6 @@ export function PieChartThumbnail({ chart }: { chart: PieChartDTO }) {
           ))}
         </Pie>
       </RCPieChart>
-    </ResponsiveContainer>
   );
 }
 
@@ -192,8 +194,8 @@ export function RadarChartThumbnail({ chart }: { chart: RadarChartDTO }) {
   });
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <RCRadarChart data={data}>
+
+      <RCRadarChart data={data} responsive={true} style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
         {chart.series.map((s, i) => (
           <Radar
             key={s.name}
@@ -203,29 +205,31 @@ export function RadarChartThumbnail({ chart }: { chart: RadarChartDTO }) {
             fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
             fillOpacity={0.3}
             isAnimationActive={false}
+            activeDot={false}
           />
         ))}
       </RCRadarChart>
-    </ResponsiveContainer>
   );
 }
 
 // SCATTER CHART THUMBNAIL
 export function ScatterChartThumbnail({ chart }: { chart: ScatterChartDTO }) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <RCScatterChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+      <RCScatterChart margin={{ top: 0, right: 0, bottom: 0, left: 0 }} responsive={true} style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
+        <XAxis type="number" dataKey="x" hide domain={["auto", "auto"]} />
+        <YAxis type="number" dataKey="y" hide domain={["auto", "auto"]} />
         {chart.series.map((s, i) => (
           <Scatter
             key={s.name}
             name={s.name}
             data={s.data.map((p) => ({ x: p.x, y: p.y }))}
             fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+            shape="circle"
+            fillOpacity={0.9}
             isAnimationActive={false}
           />
         ))}
       </RCScatterChart>
-    </ResponsiveContainer>
   );
 }
 
@@ -241,32 +245,31 @@ export function BoxChartThumbnail({ chart }: { chart: BoxChartDTO }) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <RCBarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+      <RCBarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} responsive={true} style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
         <Bar dataKey="median" fill="hsl(200, 70%, 50%)" isAnimationActive={false} />
       </RCBarChart>
-    </ResponsiveContainer>
   );
 }
 
 // HISTOGRAM CHART THUMBNAIL
 export function HistogramChartThumbnail({ chart }: { chart: HistogramChartDTO }) {
+  const data = chart.data.map((bin) => ({
+    value: chart.cumulative ? bin.density ?? bin.frequency : bin.frequency,
+  }));
+
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <RCBarChart data={chart.data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-        <Bar dataKey="count" fill="hsl(200, 70%, 50%)" isAnimationActive={false} />
+
+      <RCBarChart data={data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} responsive={true} style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
+        <Bar dataKey="value" fill="hsl(200, 70%, 50%)" isAnimationActive={false} />
       </RCBarChart>
-    </ResponsiveContainer>
   );
 }
 
 // WATERFALL CHART THUMBNAIL
 export function WaterfallChartThumbnail({ chart }: { chart: WaterfallChartDTO }) {
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <RCBarChart data={chart.data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+      <RCBarChart data={chart.data} margin={{ top: 0, right: 0, bottom: 0, left: 0 }} responsive={true} style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0 }}>
         <Bar dataKey="value" fill="hsl(200, 70%, 50%)" isAnimationActive={false} />
       </RCBarChart>
-    </ResponsiveContainer>
   );
 }

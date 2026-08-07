@@ -11,7 +11,7 @@ import {
   HistogramChartThumbnail,
   WaterfallChartThumbnail,
   BoxChartThumbnail,
-} from "@/components/charts/chart-thumbnail-view";
+} from "@/components/charts/ThumbnailChartView";
 
 interface ChartThumbnailProps {
   chart: ChartDTO;
@@ -22,7 +22,7 @@ export function ChartThumbnail({ chart }: ChartThumbnailProps) {
   const chartKey = `${chart.type}-${JSON.stringify(chart.metadata?.title || '')}`;
   
   return (
-    <div key={chartKey} style={{ width: "100%", height: "100%" }}>
+    <div key={chartKey} className="w-full h-full min-w-0 min-h-0">
       {chart.type === "LINE" && <LineChartThumbnail chart={chart} />}
       {chart.type === "BOX" && <BoxChartThumbnail chart={chart} />}
       {chart.type === "AREA" && <AreaChartThumbnail chart={chart} />}

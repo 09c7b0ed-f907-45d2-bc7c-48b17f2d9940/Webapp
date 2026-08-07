@@ -8,7 +8,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
   return (
     <div className="w-full">
       <hr className={cn(
-        "h-px bg-border transition-all duration-100 p-1px",
+        "h-px bg-border duration-100 p-1px transition-[color, height]",
         isFocused && "h-1 bg-ring"
       )} />
       <textarea
@@ -22,7 +22,7 @@ function Textarea({ className, ...props }: React.ComponentProps<"textarea">) {
           props.onBlur?.(e)
         }}
         className={cn(
-          "placeholder:text-muted-foreground  aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-card field-sizing-content min-h-20 w-full rounded-none py-3 text-base transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pr-6 flex-shrink-0",
+          "placeholder:text-muted-foreground  aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-card field-sizing-content min-h-20 w-full rounded-none py-3 text-base transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pr-2 flex-shrink-0",
           className
         )}
         {...props}

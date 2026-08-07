@@ -9,11 +9,13 @@ import clsx from "clsx";
 import { useTranslation } from 'react-i18next';
 import '@/i18n';
 import { ChartThumbnail } from "@/components/ui/chart-thumbnail";
-import { MannWhitneyUThumbnail } from "@/components/charts/MannWhitneyUThumbnail";
+import { MannWhitneyUThumbnail } from "@/components/charts/MannWhitneyUThumbnailView";
 import { useThread } from "@/components/ThreadContext";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "../tooltip";
 
 export default function HistoryWindow() {
+  const cardAspectRatio = 6 / 4;
+  const historyRowPadding = 16;
   const { currentThreadId } = useThread();
   const history = useChatStore((s) => s.history);
   const setHistory = useChatStore((s) => s.setHistory);
@@ -26,7 +28,7 @@ export default function HistoryWindow() {
   const visualization = useChatStore((s) => s.visualization);
   const { t } = useTranslation('common');
 
-  const chartRefs = useRef<(HTMLDivElement | null)[]>([]);
+const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   useEffect(() => {
     if (!currentThreadId) {
@@ -69,7 +71,7 @@ export default function HistoryWindow() {
 
   // Clear refs when display history changes
   useEffect(() => {
-    chartRefs.current = [];
+    chartRefs.current = {};
   }, [history]);
 
   useEffect(() => {
@@ -93,7 +95,7 @@ export default function HistoryWindow() {
       const refKey = selectedChartIndex !== null
         ? `${historyIndex}-chart-${selectedChartIndex}`
         : `${historyIndex}-stat-${selectedStatisticsIndex}`;
-      const ref = chartRefs.current.find((el) => el?.dataset.refkey === refKey);
+      const ref = chartRefs.current[refKey];
       if (ref) {
         ref.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
       }
@@ -114,49 +116,38 @@ export default function HistoryWindow() {
 
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [cardHeight, setCardHeight] = useState<number>(0);
 
   useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        const { width, height } = containerRef.current.getBoundingClientRect();
-        setContainerDimensions({ width, height });
-      }
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateCardHeight = () => {
+      setCardHeight(Math.max(viewport.clientHeight - historyRowPadding, 0));
     };
 
-    const observedElement = containerRef.current;
-    let resizeObserver: ResizeObserver | null = null;
-    if (observedElement) {
-      resizeObserver = new ResizeObserver(updateDimensions);
-      resizeObserver.observe(observedElement);
-    }
-    updateDimensions();
+    updateCardHeight();
 
-    window.addEventListener("resize", updateDimensions);
+    const resizeObserver = new ResizeObserver(() => {
+      updateCardHeight();
+    });
+
+    resizeObserver.observe(viewport);
 
     return () => {
-      window.removeEventListener("resize", updateDimensions);
-      if (resizeObserver && observedElement) {
-        resizeObserver.unobserve(observedElement);
-      }
+      resizeObserver.disconnect();
     };
   }, []);
 
-  const cardHeight = Math.max(100, containerDimensions.height - 60);
-  const cardWidth = Math.max(180, cardHeight * 0.75);
-  
-  const scrollRef = useRef<HTMLDivElement>(null);
-
   return (
-    <div ref={containerRef} className="w-full h-full flex flex-col p-4">
+    <div ref={containerRef} className="w-full h-full min-h-0 min-w-0 flex flex-col p-4">
       <p className=" font-semibold text-primary">{t('history.title')}</p>
       <ScrollArea
-        ref={scrollRef}
-        className="w-full flex-1"
+        viewportRef={viewportRef}
+        className="w-full flex-1 min-h-0 min-w-0"
         onWheel={(e) => {
-          const viewport = scrollRef.current?.querySelector(
-          "[data-radix-scroll-area-viewport]"
-          ) as HTMLDivElement | null;
+          const viewport = viewportRef.current;
 
           if (!viewport) return;
 
@@ -166,7 +157,7 @@ export default function HistoryWindow() {
           }
         }}
       >
-        <div ref={scrollRef}className="flex flex-1 flex-row gap-2 p-2">
+        <div className="box-border flex h-full min-h-0 flex-row items-stretch gap-2 overflow-y-hidden p-2">
           <TooltipProvider>
             {history.map((viz, historyIndex) => {
               const charts = (viz.charts ?? []) as ChartDTO[];
@@ -182,23 +173,22 @@ export default function HistoryWindow() {
                         ref={(el) => {
                           if (el) {
                             el.dataset.refkey = refKey;
-                            chartRefs.current.push(el);
+                            chartRefs.current[refKey] = el;
                           }
                         }}
                         onClick={() => handleChartClick(viz, chartIndex)}
-                        style={{
-                          width: `${cardWidth}px`,
-                          height: `${cardHeight}px`,
-                        }}
+                        style={{ 
+                          height: cardHeight > 0 ? `${cardHeight}px` : undefined, 
+                          aspectRatio: `${cardAspectRatio}`, } }
                         className={clsx(
-                          "cursor-pointer transition-all duration-300 flex-shrink-0 min-h-0 flex items-center justify-center ",
-                          isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
+                          "flex min-h-0 flex-shrink-0 cursor-pointer items-stretch justify-center ",
+                          isSelected ? "ring-3 ring-blue-500" : "hover:ring- hover:ring-muted"
                         )}
                       >
-                        <div className="w-full h-full flex flex-col justify-between border hover:bg-black/5">
-                          <div className="w-full flex-1 min-w-0 flex items-center justify-center overflow-hidden">
-                            <div className="w-4/5 h-4/5">
-                              <ChartThumbnail chart={item} />
+                        <div className="flex h-full w-full min-h-0 flex-col justify-between border hover:bg-black/5" style={{contain: 'layout paint size'}}>
+                          <div className="flex min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden">
+                            <div className="w-full h-full min-w-0 min-h-0">
+                              <ChartThumbnail chart={item}/>
                             </div>
                           </div>
                           <div className="p-4 text-sm flex flex-col flex-shrink-0 flex-grow-0">
@@ -210,7 +200,9 @@ export default function HistoryWindow() {
                               {item.type === "BAR" && t('visualization.type.bar')}
                               {item.type === "PIE" && t('visualization.type.pie')}
                               {item.type === "RADAR" && t('visualization.type.radar')}
-                              {item.type !== "BOX" && item.type !== "LINE" && item.type !== "AREA" && item.type !== "BAR" && item.type !== "PIE" && item.type !== "RADAR" && (<>{item.type}</>)}
+                              {item.type === "SCATTER" && t('visualization.type.scatter')}
+                              {item.type === "HISTOGRAM" && t('visualization.type.histogram')}
+                              {item.type === "WATERFALL" && t('visualization.type.waterfall')}
                             </div>
                           </div>
                         </div>
@@ -229,7 +221,7 @@ export default function HistoryWindow() {
               const statItems = stats.map((item, statIndex) => {
                 const refKey = `${historyIndex}-stat-${statIndex}`;
                 const isSelected = visualization === viz && selectedStatisticsIndex === statIndex;
-                const statusLabel = item.status
+                const statusLabel = item.details
                   ? `${item.status.charAt(0).toUpperCase()}${item.status.slice(1)}`
                   : "Unknown";
                 return (
@@ -239,21 +231,21 @@ export default function HistoryWindow() {
                         ref={(el) => {
                           if (el) {
                             el.dataset.refkey = refKey;
-                            chartRefs.current.push(el);
+                            chartRefs.current[refKey] = el;
                           }
                         }}
                         onClick={() => handleStatClick(viz, statIndex)}
                         style={{
-                          width: `${cardWidth}px`,
-                          height: `${cardHeight}px`,
+                          height: cardHeight > 0 ? `${cardHeight}px` : undefined,
+                          aspectRatio: `${cardAspectRatio}`,
                         }}
                         className={clsx(
-                          "cursor-pointer transition-all duration-300 flex-shrink-0 min-h-0 flex items-center justify-center ",
+                          "flex min-h-0 flex-shrink-0 cursor-pointer items-stretch justify-center",
                           isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
                         )}
                       >
-                        <div className="w-full h-full flex flex-col justify-between border hover:bg-black/5">
-                          <div className="w-full flex-1 min-w-0 flex items-center justify-center overflow-hidden p-3">
+                        <div className="flex h-full w-full min-h-0 flex-col justify-between border hover:bg-black/5">
+                          <div className="flex min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden p-3">
                             <div className="w-4/5 h-4/5">
                               {item.test_type === 'MANN_WHITNEY_U_TEST' ? (
                                 <MannWhitneyUThumbnail result={item} />

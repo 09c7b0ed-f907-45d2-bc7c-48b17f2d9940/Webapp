@@ -71,11 +71,13 @@ export function SideMenu() {
         },
         body: JSON.stringify({
           threadId,
-          message: 'hi',
+          message: '/greet',
           metadata: {
             source: 'thread-bootstrap',
-            bootstrap: true,
+            synthetic: true,
+            ui_display_text: ""
           },
+        
         }),
       });
 
@@ -328,6 +330,7 @@ export function SideMenu() {
                 <Field className="mb-6">
                   <Input
                     name="name"
+                    autoComplete="off"
                     defaultValue={t('threads.name.default') + (" ") + (threads.length + 1)}
                   />
                 </Field>
@@ -339,7 +342,7 @@ export function SideMenu() {
                   </DialogClose>
                   <DialogClose asChild>
                     <Button type="submit">
-                      {t('threads.dialog.save')}
+                      {t('threads.dialog.create')}
                     </Button>
                   </DialogClose>
                 </DialogFooter>
@@ -376,6 +379,7 @@ export function SideMenu() {
               </DialogHeader>
               <Field className="mb-4">
                 <Input
+                  autoComplete="off"
                   autoFocus
                   value={searchQuery}
                   onChange={(event) => setSearchQuery(event.target.value)}
@@ -479,6 +483,7 @@ export function SideMenu() {
                           <Field className="mb-6">
                             <Input
                               name="name"
+                              autoComplete="off"
                               defaultValue={thread.name}
                             />
                           </Field>
@@ -522,7 +527,9 @@ export function SideMenu() {
                           }}
                         >
                           <AlertDialogHeader>
-                            <AlertDialogTitle>{t('threads.delete.title')} {thread.name}?</AlertDialogTitle>
+                            <AlertDialogTitle className=" break-all">
+                              {t('threads.delete.title')} {thread.name}?
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
                               {t('threads.delete.description')}
                             </AlertDialogDescription>

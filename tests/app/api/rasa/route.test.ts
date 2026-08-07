@@ -7,7 +7,7 @@ const fetchRasaTrackerEventsMock = vi.hoisted(() => vi.fn());
 const mapRasaTrackerEventsMock = vi.hoisted(() => vi.fn());
 const publishCommittedHistoryItemsMock = vi.hoisted(() => vi.fn());
 const setCommittedCursorFloorMock = vi.hoisted(() => vi.fn());
-const putUserAccessTokenMock = vi.hoisted(() => vi.fn());
+const putUserTokensMock = vi.hoisted(() => vi.fn());
 const getRasaUrlForRequestMock = vi.hoisted(() => vi.fn());
 const withRasaAuthMock = vi.hoisted(() => vi.fn((url: string) => url));
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -21,7 +21,7 @@ vi.mock("@/lib/sseBus", () => ({
   publishCommittedHistoryItems: publishCommittedHistoryItemsMock,
   setCommittedCursorFloor: setCommittedCursorFloorMock,
 }));
-vi.mock("@/lib/userTokenVault", () => ({ putUserAccessToken: putUserAccessTokenMock }));
+vi.mock("@/lib/userTokenVault", () => ({ putUserTokens: putUserTokensMock }));
 vi.mock("@/lib/rasaConfig", () => ({
   getRasaUrlForRequest: getRasaUrlForRequestMock,
   withRasaAuth: withRasaAuthMock,
@@ -117,9 +117,59 @@ describe("POST /api/rasa", () => {
     const res = await POST(makeRequest({ message: "hello", threadId: 1 }));
     expect(res.status).toBe(200);
 
+    expect(putUserTokensMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sub: "u1",
+        accessToken: "tok",
+      })
+    );
+
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(typeof body.publishedMessages).toBe("number");
+  });
+
+  it("forwards caller metadata and accepts metadata.ui_display_text", async () => {
+    authMock.mockResolvedValue({ accessToken: "tok", user: { id: "u1" }, accessTokenExpires: 9999999 });
+    getRasaUrlForRequestMock.mockReturnValue("http://rasa:5005");
+
+    fetchRasaTrackerEventsMock
+      .mockResolvedValueOnce({ events: [], error: undefined, status: 200 })
+      .mockResolvedValueOnce({ events: [], error: undefined, status: 200 });
+
+    mapRasaTrackerEventsMock.mockReturnValue([]);
+    publishCommittedHistoryItemsMock.mockReturnValue(0);
+
+    const bodyStream = new ReadableStream({ start(c) { c.close(); } });
+    fetchMock.mockResolvedValue({ ok: true, status: 200, body: bodyStream });
+
+    const res = await POST(makeRequest({
+      message: "hi",
+      threadId: 1,
+      metadata: {
+        source: "thread-bootstrap",
+        bootstrap: true,
+        ui_display_text: "Start thread",
+      },
+    }));
+
+    expect(res.status).toBe(200);
+    const call = fetchMock.mock.calls[0];
+    expect(call?.[0]).toBe("http://rasa:5005/webhooks/rest/webhook?stream=true");
+    const init = call?.[1] as { body?: string; method?: string; headers?: Record<string, string> };
+    expect(init.method).toBe("POST");
+    expect(init.headers).toEqual({ "Content-Type": "application/json" });
+
+    const upstreamBody = JSON.parse(init.body || "{}");
+    expect(upstreamBody.sender).toBe("u1:thread:1");
+    expect(upstreamBody.message).toBe("hi");
+    expect(upstreamBody.metadata).toEqual(
+      expect.objectContaining({
+        source: "thread-bootstrap",
+        bootstrap: true,
+        ui_display_text: "Start thread",
+      })
+    );
   });
 
   it("seeds the cursor floor from the baseline tracker event count", async () => {

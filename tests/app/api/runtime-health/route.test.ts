@@ -31,7 +31,7 @@ const ORIGINAL_ENV = {
 };
 
 function setCommonEnv() {
-  process.env.NODE_ENV = "test";
+  vi.stubEnv("NODE_ENV", "test");
   process.env.RASA_PROXY_TARGETS = JSON.stringify({
     graphql: "https://graphql.example.com",
     analytics: "https://analytics.example.com",
@@ -50,7 +50,7 @@ function setCommonEnv() {
 }
 
 function restoreEnv() {
-  process.env.NODE_ENV = ORIGINAL_ENV.NODE_ENV;
+  vi.stubEnv("NODE_ENV", ORIGINAL_ENV.NODE_ENV ?? "");
   process.env.FEEDBACK_ADMIN_EMAILS = ORIGINAL_ENV.FEEDBACK_ADMIN_EMAILS;
   process.env.FEEDBACK_ADMIN_ROLES = ORIGINAL_ENV.FEEDBACK_ADMIN_ROLES;
   process.env.RASA_URL_LIST = ORIGINAL_ENV.RASA_URL_LIST;

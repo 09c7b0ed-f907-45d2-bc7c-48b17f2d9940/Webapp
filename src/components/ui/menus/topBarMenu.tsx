@@ -264,7 +264,7 @@ export default function TopBar() {
 					</TooltipProvider>
 				) : null}
 				{canViewFeedbackAdmin ? (
-					<Button variant="outline" className="rounded  hover:bg-black/5" asChild>
+					<Button variant="outline" className="rounded  hover:bg-black/5 transition-colors" asChild>
 						<Link href="/admin/feedback">Feedback Admin</Link>
 					</Button>
 				) : null}

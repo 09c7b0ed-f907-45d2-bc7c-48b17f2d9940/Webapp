@@ -47,14 +47,6 @@ export type RasaHistoryItem = {
   debug?: RasaHistoryDebug;
 };
 
-function isBootstrapUserEvent(event: RasaHistoryEvent): boolean {
-  return (
-    event.event === "user" &&
-    event.metadata?.source === "thread-bootstrap" &&
-    event.metadata?.bootstrap === true
-  );
-}
-
 function normalizeButtons(input: unknown): RasaHistoryButton[] | undefined {
   if (!Array.isArray(input)) {
     return undefined;
@@ -120,10 +112,6 @@ export function mapRasaTrackerEvents(events: RasaHistoryEvent[], includeDebugMet
   let turnIndex = 0;
 
   return events.flatMap((event, eventIndex): RasaHistoryItem[] => {
-    if (isBootstrapUserEvent(event)) {
-      return [];
-    }
-
     const previousActionName =
       eventIndex > 0 && events[eventIndex - 1]?.event === "action"
         ? events[eventIndex - 1]?.name
@@ -132,12 +120,12 @@ export function mapRasaTrackerEvents(events: RasaHistoryEvent[], includeDebugMet
     if (event.event === "user") {
       const rawText = typeof event.text === "string" ? event.text : event.parse_data?.text;
       if (!rawText) return [];
-      const uiDisplayText =
-        typeof event.metadata?.ui_display_text === "string" && event.metadata.ui_display_text.trim().length > 0
-          ? event.metadata.ui_display_text
-          : typeof event.metadata?.uiDisplayText === "string" && event.metadata.uiDisplayText.trim().length > 0
-            ? event.metadata.uiDisplayText
-            : null;
+      const uiDisplayText = typeof event.metadata?.ui_display_text === "string"
+        ? event.metadata.ui_display_text
+        : null;
+      if (uiDisplayText !== null && uiDisplayText.trim().length === 0) {
+        return [];
+      }
       const text = uiDisplayText ?? rawText;
       turnIndex += 1;
 

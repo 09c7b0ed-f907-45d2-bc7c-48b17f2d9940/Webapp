@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { getRasaUrlForRequest, withRasaAuth } from "@/lib/rasaConfig";
 import { fetchRasaTrackerEvents, mapRasaTrackerEvents } from "@/lib/rasaHistory";
-import { putUserAccessToken } from "@/lib/userTokenVault";
+import { putUserTokens } from "@/lib/userTokenVault";
 import { buildRasaSenderId } from "@/lib/rasaSender";
 import { publishCommittedHistoryItems, setCommittedCursorFloor } from "@/lib/sseBus";
 import {
@@ -37,9 +37,15 @@ export async function POST(req: NextRequest) {
     const userSub = String(session.user.id);
     const body = await req.json();
     const message = typeof body?.message === "string" ? body.message : "";
+    const inputMetadata =
+      body?.metadata && typeof body.metadata === "object" && !Array.isArray(body.metadata)
+        ? { ...(body.metadata as Record<string, unknown>) }
+        : {};
     const uiDisplayText =
       typeof body?.uiDisplayText === "string" && body.uiDisplayText.trim().length > 0
         ? body.uiDisplayText
+        : typeof inputMetadata.ui_display_text === "string" && inputMetadata.ui_display_text.trim().length > 0
+          ? inputMetadata.ui_display_text
         : null;
     const rawThreadId = body?.threadId;
     const threadId = typeof rawThreadId === "number" && Number.isFinite(rawThreadId) ? rawThreadId : null;
@@ -51,8 +57,8 @@ export async function POST(req: NextRequest) {
         typeof session.accessTokenExpires === "number" ? session.accessTokenExpires : undefined,
     };
 
-    putUserAccessToken({
-      sub: senderId,
+    await putUserTokens({
+      sub: userSub,
       ...tokenPayload,
     });
 
@@ -105,6 +111,7 @@ export async function POST(req: NextRequest) {
     let rasaStreamRes: Response;
     try {
       const requestMetadata: Record<string, unknown> = {
+        ...inputMetadata,
         ...(callbackUrl ? { callback_url: callbackUrl } : {}),
         ...(traceId ? { trace_id: traceId } : {}),
         ...(uiDisplayText ? { ui_display_text: uiDisplayText } : {}),

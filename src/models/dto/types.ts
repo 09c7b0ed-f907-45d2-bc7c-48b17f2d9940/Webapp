@@ -1,13 +1,19 @@
-export type ChartType =
-  | "LINE"
-  | "BAR"
-  | "BOX"
-  | "HISTOGRAM"
-  | "SCATTER"
-  | "PIE"
-  | "RADAR"
-  | "WATERFALL"
-  | "AREA";
+// Kept in sync with SSOT/ChartType.yml's canonical values -- see
+// tests/lib/chartType.test.ts, which fails if this list and that file
+// diverge.
+export const CHART_TYPES = [
+  "LINE",
+  "BAR",
+  "BOX",
+  "HISTOGRAM",
+  "SCATTER",
+  "PIE",
+  "RADAR",
+  "WATERFALL",
+  "AREA",
+] as const;
+
+export type ChartType = (typeof CHART_TYPES)[number];
 
 export interface ChartPoint {
   x: string | number;

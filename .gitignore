@@ -42,5 +42,6 @@
 !/src/**
 !/public/**
 !/tests/**
+!/scripts/**
 /.env
 !/.env.example

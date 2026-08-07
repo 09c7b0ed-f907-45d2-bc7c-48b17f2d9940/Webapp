@@ -121,7 +121,7 @@ function getLocalFeedbackStorePath(): string {
     return configured;
   }
 
-  return path.join(process.cwd(), ".data", "feedback-store.json");
+  return path.join(/* turbopackIgnore: true */ process.cwd(), ".data", "feedback-store.json");
 }
 
 function getConfiguredPostgresUrl(): string | null {

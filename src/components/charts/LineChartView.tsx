@@ -11,12 +11,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { LineChartDTO } from "@/models/dto/charts";
+import { trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
 
 interface Props {
   chart: LineChartDTO;
 }
 
 export function LineChartView({ chart }: Props) {
+  const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
   chart.series.forEach((s) =>
@@ -37,13 +39,13 @@ export function LineChartView({ chart }: Props) {
     });
     return point;
   });
+  const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
 
   return (
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data}>
+          <LineChart data={trimmedData} margin={{ top: 20, right: 20, bottom: 0, left: 20 }} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="bin"
@@ -70,7 +72,10 @@ export function LineChartView({ chart }: Props) {
                 dx: -20,
               }}
             />
-            <Tooltip />
+           <Tooltip 
+              animationEasing="spring"
+              contentStyle={{ backgroundColor: "var(--card)", borderRadius: "var(--radius)",  minWidth: "100px", fontSize: "0.75rem", fontWeight: "bold" }}
+            />            
             <Legend />
             {chart.series.map((s, i) => (
               <Line
@@ -79,14 +84,23 @@ export function LineChartView({ chart }: Props) {
                 dataKey={s.name}
                 stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
                 strokeWidth={2}
-                dot={{ r: 10 }}
-                activeDot={{ r: 15 }}
+                dot={{
+                  r: 10,
+                  fill: "var(--primary-foreground)",
+                  stroke: `hsl(${(i * 70) % 360}, 70%, 50%)`,
+                  strokeWidth: 3,
+                }}
+                activeDot={{
+                  r: 15,
+                  fill: `hsl(${(i * 70) % 360}, 70%, 50%)`,
+                  stroke: "var(--primary-foreground)",
+                  strokeWidth: 3,
+                }}
                 connectNulls={false}
                 isAnimationActive={false}
               />
             ))}
           </LineChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );
