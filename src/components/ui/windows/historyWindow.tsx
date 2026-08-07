@@ -240,13 +240,13 @@ const chartRefs = useRef<Record<string, HTMLDivElement | null>>({});
                           aspectRatio: `${cardAspectRatio}`,
                         }}
                         className={clsx(
-                          "flex min-h-0 flex-shrink-0 cursor-pointer items-stretch justify-center",
-                          isSelected ? "ring-3 ring-blue-500 scale-[1.02]" : "hover:ring- hover:ring-muted"
+                          "flex min-h-0 min-w-0 flex-shrink-0 cursor-pointer items-stretch justify-center",
+                          isSelected ? "ring-3 ring-blue-500" : "hover:ring- hover:ring-muted"
                         )}
                       >
                         <div className="flex h-full w-full min-h-0 flex-col justify-between border hover:bg-black/5">
-                          <div className="flex min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden p-3">
-                            <div className="w-4/5 h-4/5">
+                          <div className="flex min-h-0 w-full min-w-0 flex-1 items-center justify-center overflow-hidden">
+                            <div className="w-full h-full min-w-0 min-h-0">
                               {item.test_type === 'MANN_WHITNEY_U_TEST' ? (
                                 <MannWhitneyUThumbnail result={item} />
                               ) : (
