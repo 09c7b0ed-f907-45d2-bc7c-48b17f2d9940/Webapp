@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { ScatterChartDTO } from "@/models/dto/charts";
+import { getSeriesColor } from "@/lib/chart-utils";
 
 interface Props {
   chart: ScatterChartDTO;
@@ -63,7 +64,7 @@ export function ScatterChartView({ chart }: Props) {
                 name={series.name}
                 dataKey="y"
                 data={data.filter((d) => d.series === series.name)}
-                fill={`hsl(${(index * 70) % 360}, 70%, 50%)`}
+                fill={getSeriesColor(index)}
                 isAnimationActive={false}
                 shape={<circle r={10} />}
               />

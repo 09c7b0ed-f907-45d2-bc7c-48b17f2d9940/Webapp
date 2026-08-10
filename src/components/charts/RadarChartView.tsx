@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { RadarChartDTO } from "@/models/dto/charts";
+import { getSeriesColor } from "@/lib/chart-utils";
 
 interface Props {
   chart: RadarChartDTO;
@@ -44,8 +45,8 @@ export function RadarChartView({ chart }: Props) {
                 key={s.name}
                 name={s.name}
                 dataKey={s.name}
-                stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
-                fill={`hsl(${(i * 70) % 360}, 70%, 50%)`}
+                stroke={getSeriesColor(i)}
+                fill={getSeriesColor(i)}
                 fillOpacity={0.3}
                 isAnimationActive={false}
               />

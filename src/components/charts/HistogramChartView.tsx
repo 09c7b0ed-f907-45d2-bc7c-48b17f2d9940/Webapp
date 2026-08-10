@@ -11,12 +11,16 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { HistogramChartDTO } from "@/models/dto/charts";
+import { getDynamicCategoryTickLayout, trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
+import { useElementWidth } from "@/hooks/use-element-width";
 
 interface Props {
   chart: HistogramChartDTO;
 }
 
 export function HistogramChartView({ chart }: Props) {
+  const { elementRef: chartContainerRef, widthPx: chartWidthPx } = useElementWidth<HTMLDivElement>(1000);
+
   const data = chart.data.map((bin, index) => ({
     index,
     range: `${bin.range_start} – ${bin.range_end}`,
@@ -26,15 +30,31 @@ export function HistogramChartView({ chart }: Props) {
     const yLabel = chart.cumulative
     ? chart.metadata?.y_axis?.label ?? "Density / Cumulative"
     : chart.metadata?.y_axis?.label ?? "Frequency";
+  
+  const trimmedData = trimEmptyEdgeChartPoints(data, ["value"]);
+  const tickLayout = getDynamicCategoryTickLayout({
+    chartWidthPx,
+    pointCount: trimmedData.length,
+    rotateThresholdPx: 70,
+    horizontalMinTickSpacingPx: 10,
+    rotatedMinTickSpacingPx: 30,
+    rotatedAngle: -45,
+    labelHeightBig: 70,
+    labelHeightSmall: 50,
+  });
 
   return (
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
-      <div className="flex-1 min-h-0">
-          <BarChart data={data} barGap={-0.1} barCategoryGap={-.5} responsive={true} style={{ width: '100%', height: '100%' }}>
+      <div ref={chartContainerRef} className="flex-1 min-h-0">
+          <BarChart data={trimmedData} barGap={-0.1} barCategoryGap={-.5} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis
               dataKey="range"
+              angle={tickLayout.angle}
+              textAnchor={tickLayout.textAnchor}
+              height={tickLayout.height}
+              interval={tickLayout.interval}
               label={{
                 value: chart.metadata?.x_axis?.label ?? "",
                 position: "insideBottomRight",
