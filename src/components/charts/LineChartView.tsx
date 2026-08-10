@@ -11,13 +11,15 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { LineChartDTO } from "@/models/dto/charts";
-import { trimEmptyEdgeChartPoints } from "@/lib/chart-utils";
+import { trimEmptyEdgeChartPoints, getDynamicCategoryTickLayout, getSeriesColor } from "@/lib/chart-utils";
+import { useElementWidth } from "@/hooks/use-element-width";
 
 interface Props {
   chart: LineChartDTO;
 }
 
 export function LineChartView({ chart }: Props) {
+  const { elementRef: chartContainerRef, widthPx: chartWidthPx } = useElementWidth<HTMLDivElement>(1000);
   const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
   const seen = new Set<string>();
@@ -40,14 +42,25 @@ export function LineChartView({ chart }: Props) {
     return point;
   });
   const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
+  const tickLayout = getDynamicCategoryTickLayout({
+    chartWidthPx,
+    pointCount: trimmedData.length,
+    rotateThresholdPx: 30,
+    horizontalMinTickSpacingPx: 15,
+    rotatedMinTickSpacingPx: 30,
+    rotatedAngle: -45,
+    labelHeightBig: 60,
+    labelHeightSmall: 50,
+  });
 
   return (
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
-      <div className="flex-1 min-h-0">
+      <div ref={chartContainerRef} className="flex-1 min-h-0">
           <LineChart data={trimmedData} margin={{ top: 20, right: 20, bottom: 0, left: 20 }} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
               <XAxis
+                height={tickLayout.height}
                 dataKey="bin"
                 tickFormatter={(value) => {
                   if (typeof value === "number" && value > 1000000000) {
@@ -57,11 +70,13 @@ export function LineChartView({ chart }: Props) {
                   }
                   return String(value);
                 }}
-                interval="preserveStartEnd"
+                interval={tickLayout.interval}
+                angle={tickLayout.angle}
+                textAnchor={tickLayout.textAnchor}
                 label={{
                   value: chart.metadata?.x_axis?.label ?? "",
                   position: "insideBottomRight",
-                  offset: -5,
+                  dy: -5,
                 }}
               />
             <YAxis
@@ -72,36 +87,39 @@ export function LineChartView({ chart }: Props) {
                 dx: -20,
               }}
             />
+            <Legend />
            <Tooltip 
               animationEasing="spring"
               contentStyle={{ backgroundColor: "var(--card)", borderRadius: "var(--radius)",  minWidth: "100px", fontSize: "0.75rem", fontWeight: "bold" }}
-            />            
-            <Legend />
-            {chart.series.map((s, i) => (
-              <Line
-                key={s.name}
-                type={chart.smooth ? "monotone" : "linear"}
-                dataKey={s.name}
-                stroke={`hsl(${(i * 70) % 360}, 70%, 50%)`}
-                strokeWidth={2}
-                dot={{
-                  r: 10,
-                  fill: "var(--primary-foreground)",
-                  stroke: `hsl(${(i * 70) % 360}, 70%, 50%)`,
-                  strokeWidth: 3,
-                }}
-                activeDot={{
-                  r: 15,
-                  fill: `hsl(${(i * 70) % 360}, 70%, 50%)`,
-                  stroke: "var(--primary-foreground)",
-                  strokeWidth: 3,
-                }}
-                connectNulls={false}
-                isAnimationActive={false}
-              />
-            ))}
+            />  
+            {chart.series.map((s, i) => {
+              const seriesColor = getSeriesColor(i);
+              return (
+                <Line
+                  key={s.name}
+                  type={chart.smooth ? "monotone" : "linear"}
+                  dataKey={s.name}
+                  stroke={seriesColor}
+                  strokeWidth={2}
+                  dot={{
+                    r: 10,
+                    fill: "var(--primary-foreground)",
+                    stroke: seriesColor,
+                    strokeWidth: 3,
+                  }}
+                  activeDot={{
+                    r: 15,
+                    fill: seriesColor,
+                    stroke: "var(--primary-foreground)",
+                    strokeWidth: 3,
+                  }}
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+              );
+            })}
           </LineChart>
+        </div>
       </div>
-    </div>
   );
 }
