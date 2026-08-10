@@ -78,6 +78,13 @@ export default function TopBar() {
 	}, []);
 
 	useEffect(() => {
+		// Admin/dev-only: regular users never had a use for this and shouldn't
+		// even trigger the poll -- see feedback-admin-view.tsx's own
+		// canViewFeedbackAdmin gating for the same identity check.
+		if (!DEV_DIAGNOSTICS && !canViewFeedbackAdmin) {
+			return;
+		}
+
 		let cancelled = false;
 
 		const load = async (forceRefresh = false) => {
@@ -101,9 +108,9 @@ export default function TopBar() {
 			cancelled = true;
 			clearInterval(intervalId);
 		};
-	}, []);
+	}, [DEV_DIAGNOSTICS, canViewFeedbackAdmin]);
 
-	const showDiagnostics = !!serviceHealth || !!serviceHealthError || DEV_DIAGNOSTICS || canViewFeedbackAdmin;
+	const showDiagnostics = (DEV_DIAGNOSTICS || canViewFeedbackAdmin) && (!!serviceHealth || !!serviceHealthError);
 
 	const healthBadgeClass = (() => {
 		if (!serviceHealth) return "border-slate-500 text-slate-700 dark:text-slate-200";

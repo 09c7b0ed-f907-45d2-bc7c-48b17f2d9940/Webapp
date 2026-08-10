@@ -6,7 +6,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -17,7 +16,6 @@ import {
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const FEEDBACK_DEBUG_MODE = process.env.NODE_ENV === "development";
 const DETAIL_MIN_WIDTH = 448;
 const DETAIL_MAX_WIDTH_PADDING = 64;
 
@@ -26,25 +24,10 @@ type IssueOption = {
   label: string;
 };
 
-type HistoryDebug = {
-  pending?: boolean;
-  eventIndex?: number;
-  turnIndex?: number;
-  timestamp?: number;
-  source?: string;
-  intentName?: string;
-  intentConfidence?: number;
-  entities?: unknown[];
-  actionName?: string;
-  policyName?: string;
-  policyConfidence?: number;
-};
-
 type ConversationHistoryMessage = {
   role: string;
   text?: string;
   custom?: Record<string, unknown> | null;
-  debug?: HistoryDebug;
 };
 
 type FeedbackRecord = {
@@ -161,28 +144,6 @@ function buildThreadGroups(records: FeedbackRecord[]): ThreadGroup[] {
   return [...groups.values()].sort(
     (left, right) => new Date(right.latestCreatedAt).getTime() - new Date(left.latestCreatedAt).getTime()
   );
-}
-
-function formatDebugLines(debug?: HistoryDebug): string[] {
-  const debugLines: string[] = [];
-  if (!debug) {
-    return debugLines;
-  }
-
-  if (debug.pending) debugLines.push("pending: tracker metadata not hydrated yet");
-  if (typeof debug.turnIndex === "number") debugLines.push(`turn: ${debug.turnIndex}`);
-  if (typeof debug.eventIndex === "number") debugLines.push(`event: ${debug.eventIndex}`);
-  if (debug.intentName) debugLines.push(`intent: ${debug.intentName}`);
-  if (typeof debug.intentConfidence === "number") debugLines.push(`intent_conf: ${debug.intentConfidence.toFixed(3)}`);
-  if (debug.actionName) debugLines.push(`action: ${debug.actionName}`);
-  if (debug.policyName) debugLines.push(`policy: ${debug.policyName}`);
-  if (typeof debug.policyConfidence === "number") debugLines.push(`policy_conf: ${debug.policyConfidence.toFixed(3)}`);
-  if (debug.source) debugLines.push(`source: ${debug.source}`);
-  if (Array.isArray(debug.entities) && debug.entities.length > 0) {
-    debugLines.push(`entities: ${JSON.stringify(debug.entities)}`);
-  }
-
-  return debugLines;
 }
 
 function renderCollapsedPayload(label: string, payload: Record<string, unknown>) {
@@ -613,40 +574,16 @@ export default function FeedbackAdminView({
                 <section className="flex flex-col gap-2">
                   <h2 className="text-sm font-medium">Conversation context</h2>
                   {selectedRecord.conversationContext && Array.isArray(selectedRecord.conversationContext.history) ? (
-                    <TooltipProvider>
-                      <div className="grid gap-2">
-                        {selectedRecord.conversationContext.history.map((message, index) => {
-                          const debugLines = formatDebugLines(message.debug);
-
-                          const content = (
-                            <div key={`${selectedRecord.id}-ctx-${index}`} className="rounded-md border p-3 text-sm">
-                              <div className="mb-1 flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
-                                <span>{message.role}</span>
-                                {FEEDBACK_DEBUG_MODE && debugLines.length > 0 ? (
-                                  <Badge variant="outline" className="normal-case">Debug on hover</Badge>
-                                ) : null}
-                              </div>
-                              {renderConversationMessage(message)}
-                            </div>
-                          );
-
-                          if (!FEEDBACK_DEBUG_MODE || debugLines.length === 0) {
-                            return content;
-                          }
-
-                          return (
-                            <Tooltip key={`${selectedRecord.id}-ctx-tooltip-${index}`}>
-                              <TooltipTrigger asChild>
-                                {content}
-                              </TooltipTrigger>
-                              <TooltipContent side="left" sideOffset={8} className="max-w-[28rem] whitespace-pre-wrap break-words">
-                                {debugLines.join("\n")}
-                              </TooltipContent>
-                            </Tooltip>
-                          );
-                        })}
-                      </div>
-                    </TooltipProvider>
+                    <div className="grid gap-2">
+                      {selectedRecord.conversationContext.history.map((message, index) => (
+                        <div key={`${selectedRecord.id}-ctx-${index}`} className="rounded-md border p-3 text-sm">
+                          <div className="mb-1 flex items-center gap-2 text-xs font-medium uppercase text-muted-foreground">
+                            <span>{message.role}</span>
+                          </div>
+                          {renderConversationMessage(message)}
+                        </div>
+                      ))}
+                    </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">No conversation snapshot was stored.</p>
                   )}
