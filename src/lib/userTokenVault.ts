@@ -1,6 +1,16 @@
 import { createClient } from "redis";
 
-type RedisClientType = ReturnType<typeof createClient>;
+type RedisVaultClient = {
+  isOpen: boolean;
+  connect(): Promise<RedisVaultClient>;
+  get(key: string): Promise<string | null>;
+  del(key: string): Promise<number>;
+  set(
+    key: string,
+    value: string,
+    options?: { EX?: number; PX?: number; NX?: boolean; XX?: boolean }
+  ): Promise<"OK" | null>;
+};
 
 type TokenEntry = {
   accessToken: string;
@@ -20,14 +30,14 @@ const DEFAULT_TTL_MS = Number(process.env.USER_TOKEN_VAULT_TTL_MS ?? 30 * 60 * 1
 
 const globalForUserTokenVault = globalThis as unknown as {
   userTokenBySub?: Map<string, TokenEntry>;
-  userTokenVaultRedisClient?: RedisClientType;
+  userTokenVaultRedisClient?: RedisVaultClient;
 };
 
 const tokenBySub = globalForUserTokenVault.userTokenBySub ?? new Map<string, TokenEntry>();
 
 globalForUserTokenVault.userTokenBySub = tokenBySub;
 
-let redisClientPromise: Promise<RedisClientType> | null = null;
+let redisClientPromise: Promise<RedisVaultClient> | null = null;
 
 function now(): number {
   return Date.now();
@@ -51,13 +61,13 @@ function assertRedisUrl(): string {
   return USER_TOKEN_VAULT_REDIS_URL;
 }
 
-async function getRedisClient(): Promise<RedisClientType> {
+async function getRedisClient(): Promise<RedisVaultClient> {
   if (globalForUserTokenVault.userTokenVaultRedisClient?.isOpen) {
     return globalForUserTokenVault.userTokenVaultRedisClient;
   }
 
   if (!redisClientPromise) {
-    const client = createClient({ url: assertRedisUrl() });
+    const client = createClient({ url: assertRedisUrl() }) as RedisVaultClient;
     redisClientPromise = client.connect().then(() => {
       globalForUserTokenVault.userTokenVaultRedisClient = client;
       return client;
