@@ -9,6 +9,7 @@ import {
   readTraceId,
   withTraceIdHeaders,
 } from "@/lib/traceId";
+import { logCompletedTurnIfEnabled, resolveLongTaskCallbackIdentity } from "@/lib/interactionLogCapture";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -208,6 +209,16 @@ export async function POST(req: NextRequest) {
     source: "long-task-callback",
     traceId,
   });
+
+  void resolveLongTaskCallbackIdentity(senderId).then((identity) =>
+    logCompletedTurnIfEnabled({
+      senderId,
+      ...identity,
+      items: committedItems,
+      traceId,
+      source: "long-task-callback",
+    })
+  );
 
   return NextResponse.json(
     { ok: true, senderId, events: trackerEvents.length, controls: controls.length, publishedMessages },

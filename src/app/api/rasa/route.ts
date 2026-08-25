@@ -11,6 +11,7 @@ import {
   readTraceId,
   withTraceIdHeaders,
 } from "@/lib/traceId";
+import { logCompletedTurnIfEnabled } from "@/lib/interactionLogCapture";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -185,6 +186,17 @@ export async function POST(req: NextRequest) {
       minEventIndexExclusive: baselineEventIndex,
       source: "rasa-webhook",
       traceId,
+    });
+
+    void logCompletedTurnIfEnabled({
+      senderId,
+      userSub,
+      userEmail: session.user.email ?? null,
+      userName: session.user.name ?? null,
+      threadId,
+      items: committedItems,
+      traceId: traceId ?? null,
+      source: "sync",
     });
 
     console.info("[rasa][post] Published committed tracker messages to SSE", createTraceLogContext(traceId, {
