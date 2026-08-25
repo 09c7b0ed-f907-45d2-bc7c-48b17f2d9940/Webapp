@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowLeft, Loader2, RefreshCcw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, RefreshCcw } from "lucide-react";
 
 type InteractionLogMode = "everyone" | "allowlist" | "denylist" | "percentage";
 type InteractionLogIdentityMode = "identified" | "pseudonymous";
@@ -160,6 +161,10 @@ export default function InteractionLogAdminView({
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
       <div>
+        <Link href="/" className="mb-2 inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="size-4" />
+          Back to chat
+        </Link>
         <h1 className="text-2xl font-semibold">Interaction Log</h1>
         <p className="text-muted-foreground text-sm">
           Admin-controlled full-turn chat capture for specific users, separate from message feedback.
