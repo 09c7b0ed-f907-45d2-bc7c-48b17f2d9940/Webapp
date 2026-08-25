@@ -85,7 +85,7 @@ type ThreadGroup = {
 
 function formatTimestamp(value: string): string {
   try {
-    return new Date(value).toLocaleString();
+    return new Date(value).toLocaleString(undefined, { hour12: false });
   } catch {
     return value;
   }
