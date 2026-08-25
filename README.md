@@ -25,7 +25,6 @@ Run instructions for:
 - `ACTION_SERVER_TOKEN` (must match Action)
 - `LONG_TASK_CALLBACK_TOKEN` (must match Action)
 - `RASA_PROXY_TARGETS` (must include `graphql`; usually also `analytics`)
-- `CVA_BASE_URL`
 
 If feedback is enabled:
 
@@ -67,6 +66,5 @@ docker run --rm -p 3000:3000 \
   -e ACTION_SERVER_TOKEN=<shared-action-token> \
   -e LONG_TASK_CALLBACK_TOKEN=<shared-callback-token> \
   -e RASA_PROXY_TARGETS='{"graphql":"https://<host>","analytics":"https://<host>"}' \
-  -e CVA_BASE_URL=https://<host>/api/rest/cva/v1 \
   ghcr.io/<org>/webapp:latest
 ```
