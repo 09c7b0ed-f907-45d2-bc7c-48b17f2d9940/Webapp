@@ -25,7 +25,6 @@ const ORIGINAL_ENV = {
   ACTION_SERVER_TOKEN: process.env.ACTION_SERVER_TOKEN,
   KEYCLOAK_ISSUER: process.env.KEYCLOAK_ISSUER,
   KEYCLOAK_CLIENT_ID: process.env.KEYCLOAK_CLIENT_ID,
-  CVA_BASE_URL: process.env.CVA_BASE_URL,
   WEBAPP_VERSION_URL: process.env.WEBAPP_VERSION_URL,
   ACTION_VERSION_URL: process.env.ACTION_VERSION_URL,
 };
@@ -40,7 +39,6 @@ function setCommonEnv() {
   process.env.ACTION_SERVER_TOKEN = "action-token";
   process.env.KEYCLOAK_ISSUER = "https://keycloak.example.com/realms/cva";
   process.env.KEYCLOAK_CLIENT_ID = "client-id";
-  process.env.CVA_BASE_URL = "https://cva.example.com";
   process.env.WEBAPP_VERSION_URL = "https://webapp.example.com/version";
   process.env.ACTION_VERSION_URL = "https://action.example.com/version";
   process.env.FEEDBACK_ADMIN_ROLES = "";
@@ -59,7 +57,6 @@ function restoreEnv() {
   process.env.ACTION_SERVER_TOKEN = ORIGINAL_ENV.ACTION_SERVER_TOKEN;
   process.env.KEYCLOAK_ISSUER = ORIGINAL_ENV.KEYCLOAK_ISSUER;
   process.env.KEYCLOAK_CLIENT_ID = ORIGINAL_ENV.KEYCLOAK_CLIENT_ID;
-  process.env.CVA_BASE_URL = ORIGINAL_ENV.CVA_BASE_URL;
   process.env.WEBAPP_VERSION_URL = ORIGINAL_ENV.WEBAPP_VERSION_URL;
   process.env.ACTION_VERSION_URL = ORIGINAL_ENV.ACTION_VERSION_URL;
 }
