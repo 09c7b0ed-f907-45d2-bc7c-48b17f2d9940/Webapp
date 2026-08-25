@@ -5,7 +5,7 @@ import { getAccessTokenEmail, getAccessTokenName } from "@/lib/feedbackAccess";
 import { createInteractionLogPseudonym } from "@/lib/interactionLogAccess";
 import { isInteractionLogEnabled } from "@/lib/interactionLogConfig";
 import { getInteractionLogSettingsCached } from "@/lib/interactionLogSettingsCache";
-import { createInteractionLogEntry } from "@/lib/interactionLogStore";
+import { upsertInteractionLogEntry } from "@/lib/interactionLogStore";
 import type { InteractionLogSettings } from "@/lib/interactionLogSettingsStore";
 import { getUserAccessToken } from "@/lib/userTokenVault";
 import { parseRasaSenderId } from "@/lib/rasaSender";
@@ -111,7 +111,7 @@ export async function logCompletedTurnIfEnabled(params: LogCompletedTurnParams):
             userPseudonym: null,
           };
 
-    await createInteractionLogEntry({
+    await upsertInteractionLogEntry({
       identityMode: settings.storageIdentityMode,
       ...identityFields,
       threadId: params.threadId,

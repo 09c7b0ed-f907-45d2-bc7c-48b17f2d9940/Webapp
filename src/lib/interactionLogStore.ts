@@ -228,7 +228,16 @@ async function purgeExpiredLocal(): Promise<void> {
   });
 }
 
-async function createLocalEntry(input: CreateInteractionLogEntryInput): Promise<InteractionLogEntry> {
+/** One row per conversation (keyed by senderId, the same conversation
+ * identity the SSE bus and Rasa tracker already use), upserted on every
+ * turn -- not one row per turn. Each call already carries the full
+ * cumulative history for that sender (see interactionLogCapture.ts), so
+ * inserting a fresh row per turn would duplicate the entire prior
+ * conversation into every new row. Updating in place keeps exactly one,
+ * always-current copy per conversation. expiresAt is recomputed from
+ * "now" on every update (a sliding window from last activity), so an
+ * actively-used conversation never expires mid-use. */
+async function upsertLocalEntry(input: CreateInteractionLogEntryInput): Promise<InteractionLogEntry> {
   warnIfUsingLocalFallback();
   await purgeExpiredLocal();
 
@@ -237,8 +246,10 @@ async function createLocalEntry(input: CreateInteractionLogEntryInput): Promise<
     const capturedAt = new Date();
     const expiresAt = new Date(capturedAt.getTime() + input.retentionDays * 24 * 60 * 60 * 1000);
 
+    const existing = store.entries.find((entry) => entry.senderId === input.senderId);
+
     const entry: InteractionLogEntry = {
-      id: randomUUID(),
+      id: existing?.id ?? randomUUID(),
       identityMode: input.identityMode,
       userSub: input.userSub,
       userEmail: input.userEmail,
@@ -254,7 +265,11 @@ async function createLocalEntry(input: CreateInteractionLogEntryInput): Promise<
       expiresAt: expiresAt.toISOString(),
     };
 
-    store.entries.push(entry);
+    if (existing) {
+      Object.assign(existing, entry);
+    } else {
+      store.entries.push(entry);
+    }
     await writeLocalStore(store);
     return entry;
   });
@@ -318,7 +333,7 @@ async function ensurePostgresSchema() {
           user_name TEXT,
           user_pseudonym TEXT,
           thread_id INTEGER,
-          sender_id TEXT NOT NULL,
+          sender_id TEXT NOT NULL UNIQUE,
           captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           source TEXT NOT NULL,
           trace_id TEXT,
@@ -367,7 +382,9 @@ async function purgeExpiredPostgres(): Promise<void> {
   await pool.query("DELETE FROM interaction_log_entry WHERE expires_at <= NOW()");
 }
 
-async function createPostgresEntry(input: CreateInteractionLogEntryInput): Promise<InteractionLogEntry> {
+/** Upserted by sender_id -- see upsertLocalEntry's comment for why (one row
+ * per conversation, not one per turn). */
+async function upsertPostgresEntry(input: CreateInteractionLogEntryInput): Promise<InteractionLogEntry> {
   const pool = getPostgresPool();
   await ensurePostgresSchema();
   await purgeExpiredPostgres();
@@ -382,7 +399,21 @@ async function createPostgresEntry(input: CreateInteractionLogEntryInput): Promi
       $1, $2, $3, $4, $5, $6,
       $7, $8, $9, $10, $11::jsonb,
       $12::jsonb, NOW() + ($13 || ' days')::interval
-    ) RETURNING *`,
+    )
+    ON CONFLICT (sender_id) DO UPDATE SET
+      identity_mode = EXCLUDED.identity_mode,
+      user_sub = EXCLUDED.user_sub,
+      user_email = EXCLUDED.user_email,
+      user_name = EXCLUDED.user_name,
+      user_pseudonym = EXCLUDED.user_pseudonym,
+      thread_id = EXCLUDED.thread_id,
+      captured_at = NOW(),
+      source = EXCLUDED.source,
+      trace_id = EXCLUDED.trace_id,
+      history_json = EXCLUDED.history_json,
+      service_snapshots_json = EXCLUDED.service_snapshots_json,
+      expires_at = EXCLUDED.expires_at
+    RETURNING *`,
     [
       id,
       input.identityMode,
@@ -443,11 +474,11 @@ async function getPostgresEntryById(id: string): Promise<InteractionLogEntry | n
   return result.rows[0] ? hydratePostgresRow(result.rows[0]) : null;
 }
 
-export async function createInteractionLogEntry(input: CreateInteractionLogEntryInput): Promise<InteractionLogEntry> {
+export async function upsertInteractionLogEntry(input: CreateInteractionLogEntryInput): Promise<InteractionLogEntry> {
   if (getInteractionLogEntryStorageInfo().kind === "postgres") {
-    return createPostgresEntry(input);
+    return upsertPostgresEntry(input);
   }
-  return createLocalEntry(input);
+  return upsertLocalEntry(input);
 }
 
 export async function listInteractionLogEntries(filters: ListFilters): Promise<{ total: number; results: InteractionLogEntry[] }> {

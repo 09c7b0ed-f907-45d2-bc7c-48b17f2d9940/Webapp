@@ -266,7 +266,7 @@ export default function InteractionLogAdminView({
                   onChange={(e) => setSettings({ ...settings, retentionDays: Number(e.target.value) })}
                 />
                 <p className="text-muted-foreground text-xs">
-                  Retention changes only affect newly captured turns, not already-stored entries.
+                  Retention resets from each conversation's most recent activity, so an active conversation never expires mid-use.
                 </p>
               </div>
               <div className="flex items-center gap-2 pt-6">
@@ -286,7 +286,7 @@ export default function InteractionLogAdminView({
               </Button>
               {settings.updatedAt && (
                 <span className="text-muted-foreground text-xs">
-                  Last updated {new Date(settings.updatedAt).toLocaleString()}
+                  Last updated {new Date(settings.updatedAt).toLocaleString(undefined, { hour12: false })}
                   {settings.updatedByEmail ? ` by ${settings.updatedByEmail}` : ""}
                 </span>
               )}
@@ -297,7 +297,7 @@ export default function InteractionLogAdminView({
 
       <section className="space-y-4 rounded-lg border p-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium">Captured turns ({total})</h2>
+          <h2 className="font-medium">Captured conversations ({total})</h2>
           <Button variant="outline" size="sm" onClick={() => void loadEntries()} disabled={entriesLoading}>
             {entriesLoading ? <Loader2 className="size-4 animate-spin" /> : <RefreshCcw className="size-4" />}
             Refresh
@@ -328,7 +328,7 @@ export default function InteractionLogAdminView({
           <TableBody>
             {entries.map((entry) => (
               <TableRow key={entry.id} className="cursor-pointer" onClick={() => setSelectedEntry(entry)}>
-                <TableCell>{new Date(entry.capturedAt).toLocaleString()}</TableCell>
+                <TableCell>{new Date(entry.capturedAt).toLocaleString(undefined, { hour12: false })}</TableCell>
                 <TableCell>
                   {entry.identityMode === "pseudonymous" ? (
                     <Badge variant="secondary">{entry.userPseudonym}</Badge>
@@ -343,7 +343,7 @@ export default function InteractionLogAdminView({
             {entries.length === 0 && !entriesLoading && (
               <TableRow>
                 <TableCell colSpan={4} className="text-muted-foreground text-center">
-                  No captured turns yet.
+                  No captured conversations yet.
                 </TableCell>
               </TableRow>
             )}
@@ -378,7 +378,7 @@ export default function InteractionLogAdminView({
                 <div>threadId: {selectedEntry.threadId ?? "-"}</div>
                 <div>source: {selectedEntry.source}</div>
                 <div>traceId: {selectedEntry.traceId ?? "-"}</div>
-                <div>expires: {new Date(selectedEntry.expiresAt).toLocaleString()}</div>
+                <div>expires: {new Date(selectedEntry.expiresAt).toLocaleString(undefined, { hour12: false })}</div>
               </div>
               <details>
                 <summary className="cursor-pointer font-medium">History ({selectedEntry.history.length})</summary>

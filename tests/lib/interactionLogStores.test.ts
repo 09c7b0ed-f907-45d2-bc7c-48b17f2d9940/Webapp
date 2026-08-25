@@ -71,9 +71,9 @@ describe("interactionLogSettingsStore (local-file backend)", () => {
 
 describe("interactionLogStore (local-file backend)", () => {
   it("creates an entry and lists it back", async () => {
-    const { createInteractionLogEntry, listInteractionLogEntries } = await import("@/lib/interactionLogStore");
+    const { upsertInteractionLogEntry, listInteractionLogEntries } = await import("@/lib/interactionLogStore");
 
-    await createInteractionLogEntry({
+    await upsertInteractionLogEntry({
       identityMode: "identified",
       userSub: "sub-1",
       userEmail: "user@example.com",
@@ -94,10 +94,53 @@ describe("interactionLogStore (local-file backend)", () => {
     expect(results[0].history).toEqual([{ role: "user", text: "hi" }]);
   });
 
-  it("filters by user email and source", async () => {
-    const { createInteractionLogEntry, listInteractionLogEntries } = await import("@/lib/interactionLogStore");
+  it("upserts by senderId instead of inserting a new row per turn", async () => {
+    const { upsertInteractionLogEntry, listInteractionLogEntries } = await import("@/lib/interactionLogStore");
 
-    await createInteractionLogEntry({
+    const first = await upsertInteractionLogEntry({
+      identityMode: "identified",
+      userSub: "sub-1",
+      userEmail: "user@example.com",
+      userName: null,
+      userPseudonym: null,
+      threadId: 1,
+      senderId: "sub-1:thread:1",
+      source: "sync",
+      traceId: "trace-1",
+      history: [{ role: "user", text: "hi" }],
+      serviceSnapshots: [],
+      retentionDays: 30,
+    });
+
+    const second = await upsertInteractionLogEntry({
+      identityMode: "identified",
+      userSub: "sub-1",
+      userEmail: "user@example.com",
+      userName: null,
+      userPseudonym: null,
+      threadId: 1,
+      senderId: "sub-1:thread:1",
+      source: "sync",
+      traceId: "trace-2",
+      history: [{ role: "user", text: "hi" }, { role: "assistant", text: "hello" }, { role: "user", text: "again" }],
+      serviceSnapshots: [],
+      retentionDays: 30,
+    });
+
+    // Same conversation -> same row (stable id), history replaced with the
+    // latest cumulative snapshot, not appended as a second row.
+    expect(second.id).toBe(first.id);
+
+    const { total, results } = await listInteractionLogEntries({});
+    expect(total).toBe(1);
+    expect(results[0].history).toHaveLength(3);
+    expect(results[0].traceId).toBe("trace-2");
+  });
+
+  it("filters by user email and source", async () => {
+    const { upsertInteractionLogEntry, listInteractionLogEntries } = await import("@/lib/interactionLogStore");
+
+    await upsertInteractionLogEntry({
       identityMode: "identified",
       userSub: "sub-1",
       userEmail: "user@example.com",
@@ -111,7 +154,7 @@ describe("interactionLogStore (local-file backend)", () => {
       serviceSnapshots: [],
       retentionDays: 30,
     });
-    await createInteractionLogEntry({
+    await upsertInteractionLogEntry({
       identityMode: "identified",
       userSub: "sub-2",
       userEmail: "other@example.com",
@@ -136,14 +179,14 @@ describe("interactionLogStore (local-file backend)", () => {
   });
 
   it("lazily purges expired entries on write and on list", async () => {
-    const { createInteractionLogEntry, listInteractionLogEntries } = await import("@/lib/interactionLogStore");
+    const { upsertInteractionLogEntry, listInteractionLogEntries } = await import("@/lib/interactionLogStore");
 
     // retentionDays a fraction of a day in the past via a negative window --
     // simulate "already expired" by writing directly with a 0-day retention
     // then waiting past it isn't practical in a unit test, so instead write
     // with a very small positive retention and assert it is NOT yet purged,
     // proving purge is expiry-based rather than purging everything blindly.
-    const entry = await createInteractionLogEntry({
+    const entry = await upsertInteractionLogEntry({
       identityMode: "identified",
       userSub: "sub-1",
       userEmail: "user@example.com",
