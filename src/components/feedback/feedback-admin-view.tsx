@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, MessageSquareText, RefreshCcw } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Loader2, MessageSquareText, RefreshCcw } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -324,6 +325,10 @@ export default function FeedbackAdminView({
   return (
     <div className="flex h-full flex-col gap-6 p-6">
       <div className="flex flex-col gap-2">
+        <Link href="/" className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="size-4" />
+          Back to chat
+        </Link>
         <h1 className="text-2xl font-semibold">Feedback review</h1>
         <p className="text-sm text-muted-foreground">
           Review message-level feedback together with conversation context and service-version snapshots.

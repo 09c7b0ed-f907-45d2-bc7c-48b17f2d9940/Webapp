@@ -191,7 +191,7 @@ export default function TopBar() {
 		>
 			<Link href="/" className="flex items-center gap-2 h-10" aria-label={t('topbar.logoAlt')}>
 				<Image
-					src={dark ? "RESQ+_Logo_White_Yellow-Cross_RGB.svg" : "RESQ+_Logo_Full_Colors_RGB.svg"}
+					src={dark ? "/RESQ+_Logo_White_Yellow-Cross_RGB.svg" : "/RESQ+_Logo_Full_Colors_RGB.svg"}
 					alt={t('topbar.logoAlt')}
 					width={629}
 					height={179}
