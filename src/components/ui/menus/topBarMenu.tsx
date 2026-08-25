@@ -235,7 +235,7 @@ export default function TopBar() {
 								{serviceHealthError ? <div>Health check failed: {serviceHealthError}</div> : null}
 								{serviceHealth ? (
 									<>
-										<div className="opacity-90 text-xs">Checked: {new Date(serviceHealth.checkedAt).toLocaleTimeString()}</div>
+										<div className="opacity-90 text-xs">Checked: {new Date(serviceHealth.checkedAt).toLocaleTimeString(undefined, { hour12: false })}</div>
 										<div className="space-y-1">
 											<div className="font-medium text-xs uppercase tracking-wide opacity-90">Core services</div>
 											{serviceHealth.services.map((svc) => (
