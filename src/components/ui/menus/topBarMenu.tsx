@@ -189,16 +189,16 @@ export default function TopBar() {
 			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0 flex-shrink-0 z-10 bg-background"
 			id="sym:TopBar"
 		>
-			<div className="flex items-center gap-2 h-10">
-				<Image 
-					src={dark ? "RESQ+_Logo_White_Yellow-Cross_RGB.svg" : "RESQ+_Logo_Full_Colors_RGB.svg"} 
-					alt={t('topbar.logoAlt')} 
-					width={629} 
+			<Link href="/" className="flex items-center gap-2 h-10" aria-label={t('topbar.logoAlt')}>
+				<Image
+					src={dark ? "/RESQ+_Logo_White_Yellow-Cross_RGB.svg" : "/RESQ+_Logo_Full_Colors_RGB.svg"}
+					alt={t('topbar.logoAlt')}
+					width={629}
 					height={179}
 					priority
-					style={{ height: "200%", width: "auto" }} 
+					style={{ height: "200%", width: "auto" }}
 				/>
-			</div>
+			</Link>
 			<div className="flex items-center gap-4 ">
 				{showDiagnostics ? (
 					<TooltipProvider>
@@ -213,7 +213,7 @@ export default function TopBar() {
 								{serviceHealthError ? <div>Health check failed: {serviceHealthError}</div> : null}
 								{serviceHealth ? (
 									<>
-										<div className="opacity-90 text-xs">Checked: {new Date(serviceHealth.checkedAt).toLocaleTimeString()}</div>
+										<div className="opacity-90 text-xs">Checked: {new Date(serviceHealth.checkedAt).toLocaleTimeString(undefined, { hour12: false })}</div>
 										<div className="space-y-1">
 											<div className="font-medium text-xs uppercase tracking-wide opacity-90">Core services</div>
 											{serviceHealth.services.map((svc) => (
