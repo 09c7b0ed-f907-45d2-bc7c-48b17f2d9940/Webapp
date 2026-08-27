@@ -62,11 +62,12 @@ import { POST } from "@/app/api/rasa/long-task-callback/route";
 
 function makeRequest(
   body: Record<string, unknown>,
-  opts: { token?: string; rasaUrl?: string } = {}
+  opts: { token?: string; rasaUrl?: string; querySenderId?: string } = {}
 ): NextRequest {
   const rasaUrl = opts.rasaUrl ?? "http://rasa:5005";
   const token = opts.token ?? VALID_TOKEN;
-  const url = `http://localhost/api/rasa/long-task-callback?rasaUrl=${encodeURIComponent(rasaUrl)}&senderId=${encodeURIComponent(body.senderId as string)}`;
+  const querySenderId = opts.querySenderId ?? (body.senderId as string);
+  const url = `http://localhost/api/rasa/long-task-callback?rasaUrl=${encodeURIComponent(rasaUrl)}&senderId=${encodeURIComponent(querySenderId)}`;
   return new NextRequest(url, {
     method: "POST",
     headers: {
@@ -90,6 +91,17 @@ describe("POST /api/rasa/long-task-callback", () => {
       makeRequest({ events: [], controls: [] } as never)
     );
     expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when the body senderId doesn't match the callback URL's senderId", async () => {
+    const res = await POST(
+      makeRequest(
+        { senderId: "victim:thread:1", events: [{ event: "bot", text: "hi" }], controls: [] },
+        { querySenderId: "attacker:thread:1" }
+      )
+    );
+    expect(res.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("returns 400 when events and controls are both empty", async () => {
