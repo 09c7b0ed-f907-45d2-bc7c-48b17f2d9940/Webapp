@@ -9,6 +9,7 @@ import {
   readTraceId,
   withTraceIdHeaders,
 } from "@/lib/traceId";
+import { logCompletedTurnIfEnabled, resolveLongTaskCallbackIdentity } from "@/lib/interactionLogCapture";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -159,6 +160,20 @@ export async function POST(req: NextRequest) {
     return createTraceErrorResponse("Invalid senderId or empty payload", 400, traceId);
   }
 
+  // expectedSenderId comes from the callback URL this app itself generated
+  // (api/rasa/route.ts embeds it server-side); Action always echoes back
+  // the same tracker sender_id it was given, so for legitimate callbacks
+  // these always match. Anyone holding just the shared callback token
+  // could otherwise supply an arbitrary senderId in the body to write
+  // fabricated events into a real user's tracker/conversation history.
+  if (!expectedSenderId || receivedSenderId !== expectedSenderId) {
+    console.warn("[long-task-callback] senderId mismatch between callback URL and payload", createTraceLogContext(traceId, {
+      receivedSenderId,
+      expectedSenderId,
+    }));
+    return createTraceErrorResponse("senderId mismatch", 400, traceId);
+  }
+
   const rasaUrl = resolveRasaUrl(req, payload as unknown as Record<string, unknown>);
   if (!rasaUrl) {
     console.warn("[long-task-callback] Missing or invalid rasaUrl", createTraceLogContext(traceId));
@@ -208,6 +223,16 @@ export async function POST(req: NextRequest) {
     source: "long-task-callback",
     traceId,
   });
+
+  void resolveLongTaskCallbackIdentity(senderId).then((identity) =>
+    logCompletedTurnIfEnabled({
+      senderId,
+      ...identity,
+      items: committedItems,
+      traceId,
+      source: "long-task-callback",
+    })
+  );
 
   return NextResponse.json(
     { ok: true, senderId, events: trackerEvents.length, controls: controls.length, publishedMessages },

@@ -31,6 +31,13 @@ If feedback is enabled:
 - `MESSAGE_FEEDBACK_ENABLED=true`
 - `FEEDBACK_REPORTER_SALT` (required)
 
+If interaction logging is enabled (separate, stricter feature -- admin-controlled
+full-turn chat capture for specific real users, see `INTERACTION_LOG_ENABLED`):
+
+- `INTERACTION_LOG_ENABLED=true`
+- `INTERACTION_LOG_ADMIN_EMAILS` and/or `INTERACTION_LOG_ADMIN_ROLES` (at least one required)
+- `INTERACTION_LOG_PSEUDONYM_SALT` (required only if an admin ever enables pseudonymous storage)
+
 ## Development (Dev Container)
 
 1. Open this repository in VS Code.

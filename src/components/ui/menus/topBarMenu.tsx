@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "../../../i18n";
 import { LANGUAGE_LABELS, SUPPORTED_LANGUAGES } from "@/locales/config";
 import { getFeedbackConfigCached } from "@/lib/feedbackConfigClient";
+import { getInteractionLogConfigCached } from "@/lib/interactionLogConfigClient";
 import { getRuntimeHealthCached, type RuntimeHealthResponse } from "@/lib/runtimeHealthClient";
 
 
@@ -31,6 +32,7 @@ export default function TopBar() {
 	const [botsByLang, setBotsByLang] = useState<Record<string, boolean>>({});
 		const [botLangs, setBotLangs] = useState<string[]>([]);
 	const [canViewFeedbackAdmin, setCanViewFeedbackAdmin] = useState(false);
+	const [canViewInteractionLogAdmin, setCanViewInteractionLogAdmin] = useState(false);
 	const [serviceHealth, setServiceHealth] = useState<RuntimeHealthResponse | null>(null);
 	const [serviceHealthError, setServiceHealthError] = useState<string | null>(null);
 
@@ -69,6 +71,26 @@ export default function TopBar() {
 				if (!cancelled) {
 					console.error('Failed to fetch feedback config:', error);
 					setCanViewFeedbackAdmin(false);
+				}
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, []);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		getInteractionLogConfigCached()
+			.then((data) => {
+				if (cancelled) return;
+				setCanViewInteractionLogAdmin(data.canViewAdmin === true && data.enabled === true);
+			})
+			.catch((error) => {
+				if (!cancelled) {
+					console.error('Failed to fetch interaction log config:', error);
+					setCanViewInteractionLogAdmin(false);
 				}
 			});
 
@@ -273,6 +295,11 @@ export default function TopBar() {
 				{canViewFeedbackAdmin ? (
 					<Button variant="outline" className="rounded  hover:bg-black/5 transition-colors" asChild>
 						<Link href="/admin/feedback">Feedback Admin</Link>
+					</Button>
+				) : null}
+				{canViewInteractionLogAdmin ? (
+					<Button variant="outline" className="rounded  hover:bg-black/5 transition-colors" asChild>
+						<Link href="/admin/interaction-log">Interaction Log</Link>
 					</Button>
 				) : null}
 				{/* Language selector */}
