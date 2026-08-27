@@ -178,14 +178,9 @@ describe("interactionLogStore (local-file backend)", () => {
     expect(bySource.results[0].userEmail).toBe("other@example.com");
   });
 
-  it("lazily purges expired entries on write and on list", async () => {
+  it("does not purge an entry whose retention window hasn't elapsed", async () => {
     const { upsertInteractionLogEntry, listInteractionLogEntries } = await import("@/lib/interactionLogStore");
 
-    // retentionDays a fraction of a day in the past via a negative window --
-    // simulate "already expired" by writing directly with a 0-day retention
-    // then waiting past it isn't practical in a unit test, so instead write
-    // with a very small positive retention and assert it is NOT yet purged,
-    // proving purge is expiry-based rather than purging everything blindly.
     const entry = await upsertInteractionLogEntry({
       identityMode: "identified",
       userSub: "sub-1",
@@ -205,5 +200,53 @@ describe("interactionLogStore (local-file backend)", () => {
 
     const { total } = await listInteractionLogEntries({});
     expect(total).toBe(1);
+  });
+
+  it("actually deletes an expired entry, lazily, on the next write", async () => {
+    const { upsertInteractionLogEntry, listInteractionLogEntries } = await import("@/lib/interactionLogStore");
+
+    // A negative retention window is never reachable through the settings
+    // API (clamped to >= 1 there), but the store layer itself doesn't
+    // clamp -- using it here to deterministically produce an
+    // already-expired row without waiting or hand-editing files, so the
+    // real deletion codepath (not just "not yet expired") gets exercised.
+    await upsertInteractionLogEntry({
+      identityMode: "identified",
+      userSub: "sub-expired",
+      userEmail: "expired@example.com",
+      userName: null,
+      userPseudonym: null,
+      threadId: null,
+      senderId: "sub-expired",
+      source: "sync",
+      traceId: null,
+      history: [{ role: "user", text: "hi" }],
+      serviceSnapshots: [],
+      retentionDays: -1,
+    });
+
+    const beforePurge = await listInteractionLogEntries({ userEmail: "expired@example.com" });
+    expect(beforePurge.total).toBe(0); // list() itself purges expired rows before reading
+
+    // A second, unrelated write should also trigger purge-on-write and not
+    // resurrect the expired row.
+    await upsertInteractionLogEntry({
+      identityMode: "identified",
+      userSub: "sub-fresh",
+      userEmail: "fresh@example.com",
+      userName: null,
+      userPseudonym: null,
+      threadId: null,
+      senderId: "sub-fresh",
+      source: "sync",
+      traceId: null,
+      history: [{ role: "user", text: "hi" }],
+      serviceSnapshots: [],
+      retentionDays: 30,
+    });
+
+    const { total, results } = await listInteractionLogEntries({});
+    expect(total).toBe(1);
+    expect(results[0].userEmail).toBe("fresh@example.com");
   });
 });
