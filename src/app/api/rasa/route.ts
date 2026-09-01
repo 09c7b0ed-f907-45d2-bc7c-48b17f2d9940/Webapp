@@ -72,14 +72,16 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // No request-header fallback (e.g. x-forwarded-host) -- that value is
+    // caller-controllable and would let a request redirect where its own
+    // callback (including whatever auth it carries) gets delivered. If
+    // CALLBACK_BASE_URL isn't configured, this request simply gets no
+    // callback support; Action already degrades to synchronous execution
+    // when no callback_url is present.
     const baseCallback = process.env.CALLBACK_BASE_URL;
-    const host = req.headers.get("x-forwarded-host") || req.headers.get("host");
-    const proto = req.headers.get("x-forwarded-proto") || "https";
     const callbackBase = baseCallback
       ? `${baseCallback.replace(/\/$/, "")}/api/rasa/long-task-callback`
-      : host
-        ? `${proto}://${host}/api/rasa/long-task-callback`
-        : null;
+      : null;
     // The callback URL carries only an opaque jobId, never rasaUrl/senderId
     // directly -- the long-task-callback route resolves the real identity
     // server-side via jobStore, rather than trusting whatever a caller
