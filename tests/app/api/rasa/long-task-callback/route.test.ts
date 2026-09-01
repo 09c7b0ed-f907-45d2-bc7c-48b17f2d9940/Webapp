@@ -17,6 +17,8 @@ const setCommittedCursorFloorMock = vi.hoisted(() => vi.fn());
 const getRasaBotsMock = vi.hoisted(() => vi.fn());
 const withRasaAuthMock = vi.hoisted(() => vi.fn((url: string) => url));
 const fetchMock = vi.hoisted(() => vi.fn());
+const getJobMock = vi.hoisted(() => vi.fn());
+const touchJobMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/rasaHistory", () => ({
   fetchRasaTrackerEvents: fetchRasaTrackerEventsMock,
@@ -31,6 +33,10 @@ vi.mock("@/lib/rasaConfig", () => ({
   getRasaBots: getRasaBotsMock,
   withRasaAuth: withRasaAuthMock,
 }));
+vi.mock("@/lib/jobStore", () => ({
+  getJob: getJobMock,
+  touchJob: touchJobMock,
+}));
 vi.mock("@/lib/traceId", () => ({
   readTraceId: () => null,
   normalizeTraceId: (v: unknown) => (typeof v === "string" ? v.trim() || null : null),
@@ -42,6 +48,8 @@ vi.mock("@/lib/traceId", () => ({
 
 vi.stubGlobal("fetch", fetchMock);
 
+const DEFAULT_JOB = { sub: "u1", threadId: 1, rasaUrl: "http://rasa:5005", createdAt: 0, expiresAt: 0 };
+
 beforeEach(() => {
   fetchRasaTrackerEventsMock.mockReset();
   mapRasaTrackerEventsMock.mockReset();
@@ -50,10 +58,14 @@ beforeEach(() => {
   setCommittedCursorFloorMock.mockReset();
   getRasaBotsMock.mockReset();
   fetchMock.mockReset();
+  getJobMock.mockReset();
+  touchJobMock.mockReset();
   withRasaAuthMock.mockImplementation((url: string) => url);
   mapRasaTrackerEventsMock.mockReturnValue([]);
   publishCommittedHistoryItemsMock.mockReturnValue(0);
   getRasaBotsMock.mockReturnValue([{ url: "http://rasa:5005", lang: "en" }]);
+  getJobMock.mockResolvedValue(DEFAULT_JOB);
+  touchJobMock.mockResolvedValue(undefined);
 });
 
 afterEach(() => vi.restoreAllMocks());
@@ -62,12 +74,13 @@ import { POST } from "@/app/api/rasa/long-task-callback/route";
 
 function makeRequest(
   body: Record<string, unknown>,
-  opts: { token?: string; rasaUrl?: string; querySenderId?: string } = {}
+  opts: { token?: string; jobId?: string } = {}
 ): NextRequest {
-  const rasaUrl = opts.rasaUrl ?? "http://rasa:5005";
   const token = opts.token ?? VALID_TOKEN;
-  const querySenderId = opts.querySenderId ?? (body.senderId as string);
-  const url = `http://localhost/api/rasa/long-task-callback?rasaUrl=${encodeURIComponent(rasaUrl)}&senderId=${encodeURIComponent(querySenderId)}`;
+  const jobId = "jobId" in opts ? opts.jobId : "job-1";
+  const url = jobId
+    ? `http://localhost/api/rasa/long-task-callback?jobId=${encodeURIComponent(jobId)}`
+    : "http://localhost/api/rasa/long-task-callback";
   return new NextRequest(url, {
     method: "POST",
     headers: {
@@ -86,22 +99,45 @@ describe("POST /api/rasa/long-task-callback", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 400 when body has no senderId", async () => {
+  it("returns 400 when jobId is missing from the callback URL", async () => {
     const res = await POST(
-      makeRequest({ events: [], controls: [] } as never)
+      makeRequest({ events: [], controls: [] } as never, { jobId: undefined })
     );
     expect(res.status).toBe(400);
+    expect(getJobMock).not.toHaveBeenCalled();
   });
 
-  it("returns 400 when the body senderId doesn't match the callback URL's senderId", async () => {
+  it("returns 401 when jobId doesn't resolve to a known job (unknown or expired)", async () => {
+    getJobMock.mockResolvedValue(null);
     const res = await POST(
       makeRequest(
-        { senderId: "victim:thread:1", events: [{ event: "bot", text: "hi" }], controls: [] },
-        { querySenderId: "attacker:thread:1" }
+        { senderId: "u1:thread:1", events: [{ event: "bot", text: "hi" }], controls: [] },
+        { jobId: "stale-or-forged" }
       )
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("resolves identity from the job, ignoring a disagreeing body senderId (logged, not rejected)", async () => {
+    fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => "" });
+    fetchRasaTrackerEventsMock.mockResolvedValue({ events: [], error: undefined, status: 200 });
+
+    const res = await POST(
+      makeRequest({
+        senderId: "attacker:thread:1",
+        events: [{ event: "bot", text: "hi", data: {} }],
+        controls: [],
+      })
+    );
+
+    expect(res.status).toBe(200);
+    // Tracker events are persisted against the jobId-resolved sender, not
+    // whatever the body claimed.
+    const trackerPost = (fetchMock.mock.calls as Array<unknown[]>).find(
+      (args) => typeof args[0] === "string" && args[0].includes("/tracker/events")
+    );
+    expect(trackerPost?.[0]).toContain("/conversations/u1:thread:1/tracker/events");
   });
 
   it("returns 400 when events and controls are both empty", async () => {
@@ -111,12 +147,10 @@ describe("POST /api/rasa/long-task-callback", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 400 with missing or invalid rasaUrl", async () => {
+  it("returns 400 when the job's stored rasaUrl is not an allowed bot", async () => {
+    getJobMock.mockResolvedValue({ ...DEFAULT_JOB, rasaUrl: "http://evil.host:9999" });
     const res = await POST(
-      makeRequest(
-        { senderId: "u1:thread:1", events: [{ event: "bot", text: "hi" }], controls: [] },
-        { rasaUrl: "http://evil.host:9999" }
-      )
+      makeRequest({ senderId: "u1:thread:1", events: [{ event: "bot", text: "hi" }], controls: [] })
     );
     expect(res.status).toBe(400);
   });
@@ -151,6 +185,7 @@ describe("POST /api/rasa/long-task-callback", () => {
     const body = await res.json();
     expect(body.ok).toBe(true);
     expect(publishCommittedHistoryItemsMock).toHaveBeenCalledOnce();
+    expect(touchJobMock).toHaveBeenCalledWith("job-1");
   });
 
   it("publishes controls (lock/release) directly to SSE bus without saving to tracker", async () => {

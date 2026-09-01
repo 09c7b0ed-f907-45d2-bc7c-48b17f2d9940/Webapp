@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { getRasaUrlForRequest, withRasaAuth } from "@/lib/rasaConfig";
+import { getRasaUrlForRequest, withRasaAuth, withUserBearerHeader } from "@/lib/rasaConfig";
 import { fetchRasaTrackerEvents, mapRasaTrackerEvents } from "@/lib/rasaHistory";
 import { putUserTokens } from "@/lib/userTokenVault";
 import { buildRasaSenderId } from "@/lib/rasaSender";
+import { createJob } from "@/lib/jobStore";
 import { publishCommittedHistoryItems, setCommittedCursorFloor } from "@/lib/sseBus";
 import {
   createTraceErrorResponse,
@@ -79,9 +80,15 @@ export async function POST(req: NextRequest) {
       : host
         ? `${proto}://${host}/api/rasa/long-task-callback`
         : null;
-    const callbackUrl = callbackBase
-      ? `${callbackBase}?rasaUrl=${encodeURIComponent(apiUrl)}&senderId=${encodeURIComponent(senderId)}${traceId ? `&traceId=${encodeURIComponent(traceId)}` : ""}`
-      : null;
+    // The callback URL carries only an opaque jobId, never rasaUrl/senderId
+    // directly -- the long-task-callback route resolves the real identity
+    // server-side via jobStore, rather than trusting whatever a caller
+    // echoes back in the request.
+    let callbackUrl: string | null = null;
+    if (callbackBase) {
+      const jobId = await createJob({ sub: userSub, threadId, rasaUrl: apiUrl });
+      callbackUrl = `${callbackBase}?jobId=${encodeURIComponent(jobId)}${traceId ? `&traceId=${encodeURIComponent(traceId)}` : ""}`;
+    }
     const upstreamUrl = `${apiUrl}/webhooks/rest/webhook?stream=true`;
 
     // Snapshot tracker state before the upstream call so we can publish only
@@ -120,7 +127,7 @@ export async function POST(req: NextRequest) {
 
       rasaStreamRes = await fetch(withRasaAuth(`${apiUrl}/webhooks/rest/webhook?stream=true`), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: withUserBearerHeader({ "Content-Type": "application/json" }, session.accessToken),
         body: JSON.stringify({
           sender: senderId,
           message,

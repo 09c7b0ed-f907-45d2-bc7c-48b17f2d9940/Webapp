@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const parseRasaSenderIdMock = vi.hoisted(() => vi.fn());
 const getUserAccessTokenMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
+const getJobMock = vi.hoisted(() => vi.fn());
+const touchJobMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/rasaSender", () => ({
   parseRasaSenderId: parseRasaSenderIdMock,
@@ -11,6 +13,11 @@ vi.mock("@/lib/rasaSender", () => ({
 
 vi.mock("@/lib/userTokenVault", () => ({
   getUserAccessToken: getUserAccessTokenMock,
+}));
+
+vi.mock("@/lib/jobStore", () => ({
+  getJob: getJobMock,
+  touchJob: touchJobMock,
 }));
 
 vi.mock("@/lib/traceId", () => ({
@@ -39,8 +46,53 @@ describe("POST /api/rasa-proxy", () => {
     parseRasaSenderIdMock.mockReset();
     getUserAccessTokenMock.mockReset();
     fetchMock.mockReset();
+    getJobMock.mockReset();
+    touchJobMock.mockReset();
     process.env.ACTION_SERVER_TOKEN = "svc-token";
     process.env.RASA_PROXY_TARGETS = JSON.stringify({ graphql: "http://upstream.test" });
+  });
+
+  it("resolves identity via jobId when present, ignoring any senderId in the body", async () => {
+    getJobMock.mockResolvedValue({ sub: "u1", threadId: 12, rasaUrl: "http://rasa:5005", createdAt: 0, expiresAt: 0 });
+    getUserAccessTokenMock.mockReturnValue("user-access-token");
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    const { POST } = await import("@/app/api/rasa-proxy/route");
+    const res = await POST(
+      makeRequest({
+        jobId: "job-1",
+        senderId: "someone-else:thread:99",
+        target: "graphql",
+        request: { path: "/api/graphql/aggregation", method: "POST", body: { query: "{}" } },
+      })
+    );
+
+    expect(getJobMock).toHaveBeenCalledWith("job-1");
+    expect(touchJobMock).toHaveBeenCalledWith("job-1");
+    expect(getUserAccessTokenMock).toHaveBeenCalledWith("u1");
+    expect(parseRasaSenderIdMock).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+  });
+
+  it("returns 401 when jobId doesn't resolve to a known job", async () => {
+    getJobMock.mockResolvedValue(null);
+
+    const { POST } = await import("@/app/api/rasa-proxy/route");
+    const res = await POST(
+      makeRequest({
+        jobId: "stale-or-forged",
+        target: "graphql",
+        request: { path: "/api/graphql/aggregation", method: "POST", body: {} },
+      })
+    );
+
+    expect(res.status).toBe(401);
+    expect(getUserAccessTokenMock).not.toHaveBeenCalled();
   });
 
   it("returns 400 when senderId format is invalid", async () => {
