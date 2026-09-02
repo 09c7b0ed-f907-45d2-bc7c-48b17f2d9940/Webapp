@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
 
   // Publish controls directly so the client can respond to lock/release signals.
   for (const control of controls) {
-    publishToSender(senderId, control);
+    await publishToSender(senderId, control);
   }
 
   console.info("[long-task-callback] Received callback payload", createTraceLogContext(traceId, {
@@ -246,7 +246,7 @@ export async function POST(req: NextRequest) {
   }
 
   const committedItems = mapRasaTrackerEvents(committedTracker.events, true);
-  const publishedMessages = publishCommittedHistoryItems(senderId, committedItems, {
+  const publishedMessages = await publishCommittedHistoryItems(senderId, committedItems, {
     source: "long-task-callback",
     traceId,
   });
