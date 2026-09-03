@@ -194,6 +194,10 @@ export async function POST(req: NextRequest) {
       });
     }
   }
+  console.info(
+    `[rasa-proxy] Authenticated via ${viaKeycloak ? "keycloak service account" : "static ACTION_SERVER_TOKEN"}`,
+    createTraceLogContext(traceId)
+  );
 
   let body: ProxyRequestBody;
   try {

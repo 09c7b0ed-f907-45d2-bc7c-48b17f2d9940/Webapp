@@ -133,6 +133,10 @@ export async function POST(req: NextRequest) {
       return createTraceErrorResponse("Unauthorized", 401, requestTraceId);
     }
   }
+  console.info(
+    `[long-task-callback] Authenticated via ${viaKeycloak ? "keycloak service account" : "static LONG_TASK_CALLBACK_TOKEN"}`,
+    createTraceLogContext(requestTraceId)
+  );
 
   let body: unknown;
   try {
