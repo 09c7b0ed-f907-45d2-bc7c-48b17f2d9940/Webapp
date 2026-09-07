@@ -17,8 +17,6 @@ import { logCompletedTurnIfEnabled, resolveLongTaskCallbackIdentity } from "@/li
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const LONG_TASK_CALLBACK_TOKEN = process.env.LONG_TASK_CALLBACK_TOKEN;
-
 type CallbackControl = {
   type: "lock" | "release";
   jobId: string;
@@ -113,30 +111,15 @@ function extractControls(payload: CallbackPayload, traceId: string | null): Call
 export async function POST(req: NextRequest) {
   const requestTraceId = readTraceId(req.headers);
 
-  if (!LONG_TASK_CALLBACK_TOKEN) {
-    console.error(
-      "[long-task-callback] Missing LONG_TASK_CALLBACK_TOKEN environment variable",
-      createTraceLogContext(requestTraceId)
-    );
-    return createTraceErrorResponse("Server misconfiguration", 500, requestTraceId);
-  }
-
-  // Real service identity (Keycloak client-credentials token, verified via
-  // introspection + azp claim) is preferred when Action sends one; falls
-  // back to the static shared secret during the rollout window before
-  // Action's Keycloak service-account client exists everywhere.
+  // Action's own service identity -- a Keycloak client-credentials token,
+  // verified via introspection + azp claim. This is the only proof of
+  // identity this endpoint accepts; the static LONG_TASK_CALLBACK_TOKEN
+  // shared secret it replaced has been removed.
   const viaKeycloak = await verifyActionServiceBearer(req.headers.get("authorization"));
   if (!viaKeycloak) {
-    const token = req.headers.get("x-long-task-callback-token");
-    if (token !== LONG_TASK_CALLBACK_TOKEN) {
-      console.warn("[long-task-callback] Unauthorized request: invalid token", createTraceLogContext(requestTraceId));
-      return createTraceErrorResponse("Unauthorized", 401, requestTraceId);
-    }
+    console.warn("[long-task-callback] Unauthorized request", createTraceLogContext(requestTraceId));
+    return createTraceErrorResponse("Unauthorized", 401, requestTraceId);
   }
-  console.info(
-    `[long-task-callback] Authenticated via ${viaKeycloak ? "keycloak service account" : "static LONG_TASK_CALLBACK_TOKEN"}`,
-    createTraceLogContext(requestTraceId)
-  );
 
   let body: unknown;
   try {
