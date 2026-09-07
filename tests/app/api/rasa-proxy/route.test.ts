@@ -79,6 +79,41 @@ describe("POST /api/rasa-proxy", () => {
     expect(res.status).toBe(200);
   });
 
+  it("returns 403 when the requested path isn't allow-listed for the target", async () => {
+    getJobMock.mockResolvedValue({ sub: "u1", threadId: null, rasaUrl: "http://rasa:5005", createdAt: 0, expiresAt: 0 });
+    getUserAccessTokenMock.mockReturnValue("user-access-token");
+
+    const { POST } = await import("@/app/api/rasa-proxy/route");
+    const res = await POST(
+      makeRequest({
+        jobId: "job-1",
+        target: "graphql",
+        request: { path: "/api/rest/analytics-center/providers", method: "POST", body: {} },
+      })
+    );
+
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 for an unknown target even with no path restriction configured for it", async () => {
+    getJobMock.mockResolvedValue({ sub: "u1", threadId: null, rasaUrl: "http://rasa:5005", createdAt: 0, expiresAt: 0 });
+    getUserAccessTokenMock.mockReturnValue("user-access-token");
+    process.env.RASA_PROXY_TARGETS = JSON.stringify({ graphql: "http://upstream.test", other: "http://other.test" });
+
+    const { POST } = await import("@/app/api/rasa-proxy/route");
+    const res = await POST(
+      makeRequest({
+        jobId: "job-1",
+        target: "other",
+        request: { path: "/anything", method: "POST", body: {} },
+      })
+    );
+
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("returns 401 when jobId doesn't resolve to a known job", async () => {
     getJobMock.mockResolvedValue(null);
 

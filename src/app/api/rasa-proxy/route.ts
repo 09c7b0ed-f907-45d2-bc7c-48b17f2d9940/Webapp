@@ -41,6 +41,23 @@ type ProxyErrorDetails = {
   principalUserSub?: string | null;
 };
 
+// Restricts not just which upstream host a target can reach (RASA_PROXY_TARGETS
+// below) but which path on it -- request.path was otherwise fully caller-
+// controlled and forwarded verbatim with the user's real access token
+// attached. Each real target's client only ever calls a small, fixed set of
+// paths (see Action's GraphQLProxyClient/AnalyticsCenterClient) -- a target
+// with no entry here allows nothing, fail closed, rather than silently
+// allowing any path through.
+const ALLOWED_TARGET_PATHS: Record<string, ReadonlySet<string>> = {
+  graphql: new Set(["/api/graphql/aggregation"]),
+  analytics: new Set([
+    "/api/rest/analytics-center/providers",
+    "/api/rest/analytics-center/provider-groups",
+    "/api/rest/analytics-center/myself",
+    "/api/rest/analytics-center/countries",
+  ]),
+};
+
 function getAllowedTargets(): Record<string, string> {
   const raw = process.env.RASA_PROXY_TARGETS;
   if (!raw) return {};
@@ -291,6 +308,20 @@ export async function POST(req: NextRequest) {
       target,
       path: request.path,
       reason: "Target is not configured in RASA_PROXY_TARGETS",
+    });
+  }
+
+  const allowedPaths = ALLOWED_TARGET_PATHS[target];
+  if (!allowedPaths || !allowedPaths.has(request.path)) {
+    console.warn("[rasa-proxy] Path not allowed for target", createTraceLogContext(traceId, {
+      target,
+      path: request.path,
+    }));
+    return createProxyErrorResponse("Path not allowed for target", 403, {
+      traceId,
+      target,
+      path: request.path,
+      reason: "Requested path is not in this target's allow-list",
     });
   }
 
