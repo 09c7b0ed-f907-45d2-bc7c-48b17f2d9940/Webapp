@@ -16,6 +16,9 @@ FROM node:22-alpine@sha256:968df39aedcea65eeb078fb336ed7191baf48f972b44797113971
 
 WORKDIR /app
 
+# OS packages get security patches independently of the pinned image tag.
+RUN apk --no-cache upgrade
+
 ARG WEBAPP_VERSION=""
 ARG WEBAPP_COMMIT_SHA=""
 ARG WEBAPP_IMAGE_TAG=""
