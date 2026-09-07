@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseRasaSenderId } from "@/lib/rasaSender";
 import { getUserAccessToken } from "@/lib/userTokenVault";
+import { getJob, touchJob } from "@/lib/jobStore";
+import { verifyActionServiceBearer } from "@/lib/keycloakIntrospect";
 import {
   createTraceLogContext,
   readTraceId,
-  TRACE_ID_HEADER,
   withTraceIdHeaders,
 } from "@/lib/traceId";
 
@@ -12,6 +13,10 @@ const FETCH_TIMEOUT_MS = Number(process.env.RASA_PROXY_TIMEOUT_MS ?? 120000);
 const ACTION_SERVER_TOKEN = process.env.ACTION_SERVER_TOKEN;
 
 type ProxyRequestBody = {
+  jobId?: unknown;
+  // Legacy identity path, accepted only when jobId is absent -- kept during
+  // the Action-side rollout of jobId propagation, see the dual-accept
+  // resolution below. Not authoritative once jobId is present.
   senderId?: unknown;
   target?: unknown;
   request?: {
@@ -33,6 +38,23 @@ type ProxyErrorDetails = {
   upstreamContentType?: string | null;
   reason?: string | null;
   principalUserSub?: string | null;
+};
+
+// Restricts not just which upstream host a target can reach (RASA_PROXY_TARGETS
+// below) but which path on it -- request.path was otherwise fully caller-
+// controlled and forwarded verbatim with the user's real access token
+// attached. Each real target's client only ever calls a small, fixed set of
+// paths (see Action's GraphQLProxyClient/AnalyticsCenterClient) -- a target
+// with no entry here allows nothing, fail closed, rather than silently
+// allowing any path through.
+const ALLOWED_TARGET_PATHS: Record<string, ReadonlySet<string>> = {
+  graphql: new Set(["/api/graphql/aggregation"]),
+  analytics: new Set([
+    "/api/rest/analytics-center/providers",
+    "/api/rest/analytics-center/provider-groups",
+    "/api/rest/analytics-center/myself",
+    "/api/rest/analytics-center/countries",
+  ]),
 };
 
 function getAllowedTargets(): Record<string, string> {
@@ -173,14 +195,25 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const serviceToken = req.headers.get("x-action-server-token");
-  if (!serviceToken || serviceToken !== ACTION_SERVER_TOKEN) {
-    console.warn("[rasa-proxy] Unauthorized request", createTraceLogContext(traceId));
-    return createProxyErrorResponse("Unauthorized", 401, {
-      traceId,
-      reason: "Missing or invalid x-action-server-token",
-    });
+  // Real service identity (Keycloak client-credentials token, verified via
+  // introspection + azp claim) is preferred when Action sends one; falls
+  // back to the static shared secret during the rollout window before
+  // Action's Keycloak service-account client exists everywhere.
+  const viaKeycloak = await verifyActionServiceBearer(req.headers.get("authorization"));
+  if (!viaKeycloak) {
+    const serviceToken = req.headers.get("x-action-server-token");
+    if (!serviceToken || serviceToken !== ACTION_SERVER_TOKEN) {
+      console.warn("[rasa-proxy] Unauthorized request", createTraceLogContext(traceId));
+      return createProxyErrorResponse("Unauthorized", 401, {
+        traceId,
+        reason: "Missing or invalid service credentials",
+      });
+    }
   }
+  console.info(
+    `[rasa-proxy] Authenticated via ${viaKeycloak ? "keycloak service account" : "static ACTION_SERVER_TOKEN"}`,
+    createTraceLogContext(traceId)
+  );
 
   let body: ProxyRequestBody;
   try {
@@ -193,40 +226,64 @@ export async function POST(req: NextRequest) {
     });
   }
 
+  const jobId = typeof body?.jobId === "string" ? body.jobId.trim() : null;
   const senderId = typeof body?.senderId === "string" ? body.senderId.trim() : null;
   const target = typeof body?.target === "string" ? body.target.trim() : null;
   const request = body?.request;
-  if (!senderId || !target || !request?.path) {
+  if ((!jobId && !senderId) || !target || !request?.path) {
     console.warn("[rasa-proxy] Invalid proxy request", createTraceLogContext(traceId, {
       target,
       path: request?.path,
-      senderId,
+      hasJobId: Boolean(jobId),
+      hasSenderId: Boolean(senderId),
     }));
     return createProxyErrorResponse("Invalid proxy request", 400, {
       traceId,
       target,
       path: request?.path ?? null,
-      reason: "senderId, target, and request.path are required",
+      reason: "jobId (or, as a fallback, senderId), target, and request.path are required",
     });
   }
 
-  const sender = parseRasaSenderId(senderId);
-  if (!sender) {
-    console.warn("[rasa-proxy] Invalid senderId format", createTraceLogContext(traceId, {
-      senderId,
-      target,
-      path: request.path,
-    }));
-    return createProxyErrorResponse("Invalid senderId", 400, {
-      traceId,
-      target,
-      path: request.path,
-      reason: "senderId must be '<userSub>' or '<userSub>:thread:<id>'",
-    });
+  // Identity resolution: jobId is authoritative (server-side lookup, never
+  // trusts caller input for who this request is really for). senderId is a
+  // legacy fallback kept only until every Action deployment sends jobId --
+  // remove once confirmed rolled out.
+  let principalUserSub: string | null = null;
+
+  if (jobId) {
+    const job = await getJob(jobId);
+    if (!job) {
+      console.warn("[rasa-proxy] Unknown or expired jobId", createTraceLogContext(traceId, { jobId, target }));
+      return createProxyErrorResponse("Unknown or expired job", 401, {
+        traceId,
+        target,
+        path: request.path,
+        reason: "jobId did not resolve to an active job",
+      });
+    }
+    principalUserSub = job.sub;
+    await touchJob(jobId);
+  } else if (senderId) {
+    console.warn("[rasa-proxy] Falling back to legacy senderId-based identity resolution", createTraceLogContext(traceId, { senderId, target }));
+    const sender = parseRasaSenderId(senderId);
+    if (!sender) {
+      console.warn("[rasa-proxy] Invalid senderId format", createTraceLogContext(traceId, {
+        senderId,
+        target,
+        path: request.path,
+      }));
+      return createProxyErrorResponse("Invalid senderId", 400, {
+        traceId,
+        target,
+        path: request.path,
+        reason: "senderId must be '<userSub>' or '<userSub>:thread:<id>'",
+      });
+    }
+    principalUserSub = sender.userSub;
   }
 
-  const principalUserSub = sender.userSub;
-  const userAccessToken = await getUserAccessToken(principalUserSub);
+  const userAccessToken = principalUserSub ? await getUserAccessToken(principalUserSub) : null;
   if (!userAccessToken) {
     console.warn("[rasa-proxy] User token unavailable", createTraceLogContext(traceId, {
       senderId,
@@ -250,6 +307,20 @@ export async function POST(req: NextRequest) {
       target,
       path: request.path,
       reason: "Target is not configured in RASA_PROXY_TARGETS",
+    });
+  }
+
+  const allowedPaths = ALLOWED_TARGET_PATHS[target];
+  if (!allowedPaths || !allowedPaths.has(request.path)) {
+    console.warn("[rasa-proxy] Path not allowed for target", createTraceLogContext(traceId, {
+      target,
+      path: request.path,
+    }));
+    return createProxyErrorResponse("Path not allowed for target", 403, {
+      traceId,
+      target,
+      path: request.path,
+      reason: "Requested path is not in this target's allow-list",
     });
   }
 
@@ -287,17 +358,16 @@ export async function POST(req: NextRequest) {
     "Content-Type": "application/json",
   }, traceId);
 
+  // Allow-list, not a deny-list: only forward headers this proxy actually
+  // has a reason to pass through. Authorization/trace-id are already set
+  // above from server-side values, never from the caller; nothing today
+  // legitimately needs anything beyond content-type forwarded upstream.
+  const FORWARDABLE_REQUEST_HEADERS = new Set(["content-type"]);
   if (request.headers && typeof request.headers === "object") {
     for (const [key, value] of Object.entries(request.headers)) {
-      const normalizedKey = key.toLowerCase();
-      if (
-        normalizedKey === "authorization" ||
-        normalizedKey === "cookie" ||
-        normalizedKey === TRACE_ID_HEADER
-      ) {
-        continue;
+      if (FORWARDABLE_REQUEST_HEADERS.has(key.toLowerCase())) {
+        outgoingHeaders.set(key, value);
       }
-      outgoingHeaders.set(key, value);
     }
   }
 

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fetchRasaTrackerEvents, mapRasaTrackerEvents } from "@/lib/rasaHistory";
 import { getRasaBots, withRasaAuth } from "@/lib/rasaConfig";
+import { buildRasaSenderId } from "@/lib/rasaSender";
+import { getJob, touchJob } from "@/lib/jobStore";
+import { verifyActionServiceBearer } from "@/lib/keycloakIntrospect";
 import { publishCommittedHistoryItems, publishToSender, setCommittedCursorFloor } from "@/lib/sseBus";
 import {
   createTraceErrorResponse,
@@ -25,10 +28,11 @@ type CallbackControl = {
 };
 
 type CallbackPayload = {
-  senderId: string;
+  // Kept only for anomaly logging against the jobId-resolved identity --
+  // never authoritative. See the jobId resolution in POST below.
+  senderId?: unknown;
   events?: unknown;
   controls?: unknown;
-  rasaUrl?: unknown;
   traceId?: unknown;
 };
 
@@ -36,20 +40,14 @@ function normalizeRasaUrl(input: string): string {
   return input.trim().replace(/\/$/, "");
 }
 
-function resolveRasaUrl(req: NextRequest, body: Record<string, unknown>): string | null {
-  const fromQuery = req.nextUrl.searchParams.get("rasaUrl");
-  const fromBody = typeof body.rasaUrl === "string" ? body.rasaUrl : null;
-  const candidate = fromQuery ?? fromBody;
-  if (!candidate) return null;
-
+// job.rasaUrl was itself chosen server-side (getRasaUrlForRequest in
+// api/rasa/route.ts) and is never re-derived from caller input, but it's
+// still re-checked against the known-bot allow-list as cheap defense in
+// depth against a corrupted/tampered store entry.
+function resolveRasaUrl(candidate: string): string | null {
   const normalizedCandidate = normalizeRasaUrl(candidate);
   const allowed = getRasaBots().map((bot) => normalizeRasaUrl(bot.url));
-
-  if (!allowed.includes(normalizedCandidate)) {
-    return null;
-  }
-
-  return normalizedCandidate;
+  return allowed.includes(normalizedCandidate) ? normalizedCandidate : null;
 }
 
 function resolveTraceId(req: NextRequest, body: Record<string, unknown>): string | null {
@@ -123,11 +121,22 @@ export async function POST(req: NextRequest) {
     return createTraceErrorResponse("Server misconfiguration", 500, requestTraceId);
   }
 
-  const token = req.headers.get("x-long-task-callback-token");
-  if (token !== LONG_TASK_CALLBACK_TOKEN) {
-    console.warn("[long-task-callback] Unauthorized request: invalid token", createTraceLogContext(requestTraceId));
-    return createTraceErrorResponse("Unauthorized", 401, requestTraceId);
+  // Real service identity (Keycloak client-credentials token, verified via
+  // introspection + azp claim) is preferred when Action sends one; falls
+  // back to the static shared secret during the rollout window before
+  // Action's Keycloak service-account client exists everywhere.
+  const viaKeycloak = await verifyActionServiceBearer(req.headers.get("authorization"));
+  if (!viaKeycloak) {
+    const token = req.headers.get("x-long-task-callback-token");
+    if (token !== LONG_TASK_CALLBACK_TOKEN) {
+      console.warn("[long-task-callback] Unauthorized request: invalid token", createTraceLogContext(requestTraceId));
+      return createTraceErrorResponse("Unauthorized", 401, requestTraceId);
+    }
   }
+  console.info(
+    `[long-task-callback] Authenticated via ${viaKeycloak ? "keycloak service account" : "static LONG_TASK_CALLBACK_TOKEN"}`,
+    createTraceLogContext(requestTraceId)
+  );
 
   let body: unknown;
   try {
@@ -137,52 +146,70 @@ export async function POST(req: NextRequest) {
     return createTraceErrorResponse("Invalid JSON body", 400, requestTraceId);
   }
 
-  if (!body || typeof body !== "object" || !("senderId" in body)) {
-    console.warn("[long-task-callback] Missing senderId", createTraceLogContext(requestTraceId));
-    return createTraceErrorResponse("Missing senderId", 400, requestTraceId);
-  }
-
   const payload = body as CallbackPayload;
   const traceId = resolveTraceId(req, payload as unknown as Record<string, unknown>);
-  const expectedSenderId = req.nextUrl.searchParams.get("senderId")?.trim() || null;
-  const receivedSenderId = payload.senderId?.trim();
-  const senderId = receivedSenderId;
+
+  // Identity for this callback is resolved server-side from the jobId
+  // minted (and stored) by api/rasa/route.ts when the job started -- never
+  // from anything the caller supplies in the request. This replaces the
+  // earlier senderId-echo comparison, which only proved the caller could
+  // repeat a string back, not that it was entitled to act as that sender.
+  const callbackJobId = req.nextUrl.searchParams.get("jobId")?.trim() || null;
+  if (!callbackJobId) {
+    console.warn("[long-task-callback] Missing jobId", createTraceLogContext(traceId, {
+      bodySenderId: typeof payload.senderId === "string" ? payload.senderId : null,
+    }));
+    return createTraceErrorResponse("Missing jobId", 400, traceId);
+  }
+
+  const job = await getJob(callbackJobId);
+  if (!job) {
+    console.warn("[long-task-callback] Unknown or expired jobId", createTraceLogContext(traceId, {
+      callbackJobId,
+      bodySenderId: typeof payload.senderId === "string" ? payload.senderId : null,
+    }));
+    return createTraceErrorResponse("Unknown or expired job", 401, traceId);
+  }
+
+  const senderId = buildRasaSenderId(job.sub, job.threadId);
+  if (
+    typeof payload.senderId === "string" &&
+    payload.senderId.trim() &&
+    payload.senderId.trim() !== senderId
+  ) {
+    // Anomaly, not a rejection: the jobId lookup is already authoritative,
+    // but a disagreeing body senderId is worth surfacing for investigation.
+    console.warn("[long-task-callback] body senderId disagrees with jobId-resolved sender", createTraceLogContext(traceId, {
+      callbackJobId,
+      bodySenderId: payload.senderId,
+      resolvedSenderId: senderId,
+    }));
+  }
+
   const trackerEvents = extractTrackerEvents(payload, traceId);
   const controls = extractControls(payload, traceId);
 
-  if (!senderId || (trackerEvents.length === 0 && controls.length === 0)) {
-    console.warn("[long-task-callback] Invalid senderId or empty callback payload", createTraceLogContext(traceId, {
-      senderId: receivedSenderId,
-      expectedSenderId,
-      eventCount: trackerEvents.length,
-      controlCount: controls.length,
+  if (trackerEvents.length === 0 && controls.length === 0) {
+    console.warn("[long-task-callback] Empty callback payload", createTraceLogContext(traceId, {
+      callbackJobId,
+      senderId,
     }));
-    return createTraceErrorResponse("Invalid senderId or empty payload", 400, traceId);
+    return createTraceErrorResponse("Empty payload", 400, traceId);
   }
 
-  // expectedSenderId comes from the callback URL this app itself generated
-  // (api/rasa/route.ts embeds it server-side); Action always echoes back
-  // the same tracker sender_id it was given, so for legitimate callbacks
-  // these always match. Anyone holding just the shared callback token
-  // could otherwise supply an arbitrary senderId in the body to write
-  // fabricated events into a real user's tracker/conversation history.
-  if (!expectedSenderId || receivedSenderId !== expectedSenderId) {
-    console.warn("[long-task-callback] senderId mismatch between callback URL and payload", createTraceLogContext(traceId, {
-      receivedSenderId,
-      expectedSenderId,
-    }));
-    return createTraceErrorResponse("senderId mismatch", 400, traceId);
-  }
+  await touchJob(callbackJobId);
 
-  const rasaUrl = resolveRasaUrl(req, payload as unknown as Record<string, unknown>);
+  const rasaUrl = resolveRasaUrl(job.rasaUrl);
   if (!rasaUrl) {
-    console.warn("[long-task-callback] Missing or invalid rasaUrl", createTraceLogContext(traceId));
-    return createTraceErrorResponse("Missing or invalid rasaUrl", 400, traceId);
+    console.warn("[long-task-callback] Job's stored rasaUrl is not an allowed bot", createTraceLogContext(traceId, {
+      callbackJobId,
+    }));
+    return createTraceErrorResponse("Invalid rasaUrl", 400, traceId);
   }
 
   // Publish controls directly so the client can respond to lock/release signals.
   for (const control of controls) {
-    publishToSender(senderId, control);
+    await publishToSender(senderId, control);
   }
 
   console.info("[long-task-callback] Received callback payload", createTraceLogContext(traceId, {
@@ -219,7 +246,7 @@ export async function POST(req: NextRequest) {
   }
 
   const committedItems = mapRasaTrackerEvents(committedTracker.events, true);
-  const publishedMessages = publishCommittedHistoryItems(senderId, committedItems, {
+  const publishedMessages = await publishCommittedHistoryItems(senderId, committedItems, {
     source: "long-task-callback",
     traceId,
   });
