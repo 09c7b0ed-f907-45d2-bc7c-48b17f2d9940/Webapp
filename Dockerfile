@@ -23,6 +23,14 @@ ARG WEBAPP_BUILD_DATE=""
 
 RUN mkdir -p /app/.data && chown -R node:node /app && chmod 700 /app/.data
 
+# The runtime entrypoint below is just `node server.js` -- npm/npx/corepack
+# (bundled into the node:22-alpine base image for the builder stage's own
+# use) are never invoked here, but their vendored dependencies (tar, pacote,
+# sigstore, and others) still ship in the final image and accumulate CVEs
+# nothing can ever reach.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+    /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/.next/static ./.next/static
 COPY --from=builder --chown=node:node /app/public ./public
