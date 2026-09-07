@@ -102,7 +102,7 @@ export async function POST(req: NextRequest) {
       return createTraceErrorResponse("Failed to read Rasa tracker", 502, traceId);
     }
     const baselineEventIndex = baselineTracker.events.length - 1;
-    setCommittedCursorFloor(senderId, baselineEventIndex);
+    await setCommittedCursorFloor(senderId, baselineEventIndex);
 
     console.info("[rasa][post] Forwarding chat request", createTraceLogContext(traceId, {
       requestId,
@@ -189,7 +189,7 @@ export async function POST(req: NextRequest) {
     }
 
     const committedItems = mapRasaTrackerEvents(committedTracker.events, true);
-    const publishedMessages = publishCommittedHistoryItems(senderId, committedItems, {
+    const publishedMessages = await publishCommittedHistoryItems(senderId, committedItems, {
       minEventIndexExclusive: baselineEventIndex,
       source: "rasa-webhook",
       traceId,

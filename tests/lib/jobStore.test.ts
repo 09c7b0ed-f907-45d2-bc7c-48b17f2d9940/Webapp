@@ -1,8 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // JOB_TTL_SECONDS is read once at module load, so set it before importing
-// and always re-import fresh per test via vi.resetModules().
-vi.hoisted(() => { process.env.JOB_ID_TTL_SECONDS = "60"; });
+// and always re-import fresh per test via vi.resetModules(). Force the
+// memory backend explicitly -- this file tests real module logic (not a
+// mock), so it must not depend on whatever JOB_STORE_BACKEND happens to be
+// set to in the ambient environment (the shared devcontainer runs with
+// JOB_STORE_BACKEND=redis for real usage).
+vi.hoisted(() => {
+  process.env.JOB_ID_TTL_SECONDS = "60";
+  process.env.JOB_STORE_BACKEND = "memory";
+});
 
 beforeEach(() => {
   vi.resetModules();
