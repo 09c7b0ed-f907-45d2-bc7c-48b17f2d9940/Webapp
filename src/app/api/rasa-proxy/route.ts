@@ -6,7 +6,6 @@ import { verifyActionServiceBearer } from "@/lib/keycloakIntrospect";
 import {
   createTraceLogContext,
   readTraceId,
-  TRACE_ID_HEADER,
   withTraceIdHeaders,
 } from "@/lib/traceId";
 
@@ -359,17 +358,16 @@ export async function POST(req: NextRequest) {
     "Content-Type": "application/json",
   }, traceId);
 
+  // Allow-list, not a deny-list: only forward headers this proxy actually
+  // has a reason to pass through. Authorization/trace-id are already set
+  // above from server-side values, never from the caller; nothing today
+  // legitimately needs anything beyond content-type forwarded upstream.
+  const FORWARDABLE_REQUEST_HEADERS = new Set(["content-type"]);
   if (request.headers && typeof request.headers === "object") {
     for (const [key, value] of Object.entries(request.headers)) {
-      const normalizedKey = key.toLowerCase();
-      if (
-        normalizedKey === "authorization" ||
-        normalizedKey === "cookie" ||
-        normalizedKey === TRACE_ID_HEADER
-      ) {
-        continue;
+      if (FORWARDABLE_REQUEST_HEADERS.has(key.toLowerCase())) {
+        outgoingHeaders.set(key, value);
       }
-      outgoingHeaders.set(key, value);
     }
   }
 
