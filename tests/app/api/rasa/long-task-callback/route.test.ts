@@ -92,7 +92,7 @@ function makeRequest(
 describe("POST /api/rasa/long-task-callback", () => {
   it("returns 401 when the caller's service credentials don't verify", async () => {
     verifyActionServiceBearerMock.mockResolvedValue(false);
-    const res = await POST(makeRequest({ senderId: "u1:thread:1", events: [], controls: [] }));
+    const res = await POST(makeRequest({ events: [], controls: [] }));
     expect(res.status).toBe(401);
   });
 
@@ -108,7 +108,7 @@ describe("POST /api/rasa/long-task-callback", () => {
     getJobMock.mockResolvedValue(null);
     const res = await POST(
       makeRequest(
-        { senderId: "u1:thread:1", events: [{ event: "bot", text: "hi" }], controls: [] },
+        { events: [{ event: "bot", text: "hi" }], controls: [] },
         { jobId: "stale-or-forged" }
       )
     );
@@ -116,7 +116,7 @@ describe("POST /api/rasa/long-task-callback", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("resolves identity from the job, ignoring a disagreeing body senderId (logged, not rejected)", async () => {
+  it("resolves identity from the job, ignoring any senderId in the body", async () => {
     fetchMock.mockResolvedValue({ ok: true, status: 200, text: async () => "" });
     fetchRasaTrackerEventsMock.mockResolvedValue({ events: [], error: undefined, status: 200 });
 
@@ -139,7 +139,7 @@ describe("POST /api/rasa/long-task-callback", () => {
 
   it("returns 400 when events and controls are both empty", async () => {
     const res = await POST(
-      makeRequest({ senderId: "u1:thread:1", events: [], controls: [] })
+      makeRequest({ events: [], controls: [] })
     );
     expect(res.status).toBe(400);
   });
@@ -147,7 +147,7 @@ describe("POST /api/rasa/long-task-callback", () => {
   it("returns 400 when the job's stored rasaUrl is not an allowed bot", async () => {
     getJobMock.mockResolvedValue({ ...DEFAULT_JOB, rasaUrl: "http://evil.host:9999" });
     const res = await POST(
-      makeRequest({ senderId: "u1:thread:1", events: [{ event: "bot", text: "hi" }], controls: [] })
+      makeRequest({ events: [{ event: "bot", text: "hi" }], controls: [] })
     );
     expect(res.status).toBe(400);
   });
@@ -172,7 +172,6 @@ describe("POST /api/rasa/long-task-callback", () => {
 
     const res = await POST(
       makeRequest({
-        senderId: "u1:thread:1",
         events: [{ event: "bot", text: "hello", data: {} }],
         controls: [],
       })
@@ -194,7 +193,6 @@ describe("POST /api/rasa/long-task-callback", () => {
 
     const res = await POST(
       makeRequest({
-        senderId: "u1:thread:1",
         events: [],
         controls: [{ type: "lock", jobId: "job-abc", scope: "long_action" }],
       })
@@ -219,7 +217,6 @@ describe("POST /api/rasa/long-task-callback", () => {
 
     const res = await POST(
       makeRequest({
-        senderId: "u1:thread:1",
         events: [{ event: "bot", text: "hi", data: {} }],
         controls: [],
       })
