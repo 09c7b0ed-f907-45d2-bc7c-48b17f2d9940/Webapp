@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseRasaSenderId } from "@/lib/rasaSender";
 import { getUserAccessToken } from "@/lib/userTokenVault";
 import { getJob, touchJob } from "@/lib/jobStore";
 import { verifyActionServiceBearer } from "@/lib/keycloakIntrospect";
@@ -13,10 +12,6 @@ const FETCH_TIMEOUT_MS = Number(process.env.RASA_PROXY_TIMEOUT_MS ?? 120000);
 
 type ProxyRequestBody = {
   jobId?: unknown;
-  // Legacy identity path, accepted only when jobId is absent -- kept during
-  // the Action-side rollout of jobId propagation, see the dual-accept
-  // resolution below. Not authoritative once jobId is present.
-  senderId?: unknown;
   target?: unknown;
   request?: {
     path: string;
@@ -208,66 +203,40 @@ export async function POST(req: NextRequest) {
   }
 
   const jobId = typeof body?.jobId === "string" ? body.jobId.trim() : null;
-  const senderId = typeof body?.senderId === "string" ? body.senderId.trim() : null;
   const target = typeof body?.target === "string" ? body.target.trim() : null;
   const request = body?.request;
-  if ((!jobId && !senderId) || !target || !request?.path) {
+  if (!jobId || !target || !request?.path) {
     console.warn("[rasa-proxy] Invalid proxy request", createTraceLogContext(traceId, {
       target,
       path: request?.path,
       hasJobId: Boolean(jobId),
-      hasSenderId: Boolean(senderId),
     }));
     return createProxyErrorResponse("Invalid proxy request", 400, {
       traceId,
       target,
       path: request?.path ?? null,
-      reason: "jobId (or, as a fallback, senderId), target, and request.path are required",
+      reason: "jobId, target, and request.path are required",
     });
   }
 
-  // Identity resolution: jobId is authoritative (server-side lookup, never
-  // trusts caller input for who this request is really for). senderId is a
-  // legacy fallback kept only until every Action deployment sends jobId --
-  // remove once confirmed rolled out.
-  let principalUserSub: string | null = null;
-
-  if (jobId) {
-    const job = await getJob(jobId);
-    if (!job) {
-      console.warn("[rasa-proxy] Unknown or expired jobId", createTraceLogContext(traceId, { jobId, target }));
-      return createProxyErrorResponse("Unknown or expired job", 401, {
-        traceId,
-        target,
-        path: request.path,
-        reason: "jobId did not resolve to an active job",
-      });
-    }
-    principalUserSub = job.sub;
-    await touchJob(jobId);
-  } else if (senderId) {
-    console.warn("[rasa-proxy] Falling back to legacy senderId-based identity resolution", createTraceLogContext(traceId, { senderId, target }));
-    const sender = parseRasaSenderId(senderId);
-    if (!sender) {
-      console.warn("[rasa-proxy] Invalid senderId format", createTraceLogContext(traceId, {
-        senderId,
-        target,
-        path: request.path,
-      }));
-      return createProxyErrorResponse("Invalid senderId", 400, {
-        traceId,
-        target,
-        path: request.path,
-        reason: "senderId must be '<userSub>' or '<userSub>:thread:<id>'",
-      });
-    }
-    principalUserSub = sender.userSub;
+  // Identity is always resolved server-side from the jobId Webapp/CVaLab
+  // minted when the turn started -- never from anything the caller supplies.
+  const job = await getJob(jobId);
+  if (!job) {
+    console.warn("[rasa-proxy] Unknown or expired jobId", createTraceLogContext(traceId, { jobId, target }));
+    return createProxyErrorResponse("Unknown or expired job", 401, {
+      traceId,
+      target,
+      path: request.path,
+      reason: "jobId did not resolve to an active job",
+    });
   }
+  const principalUserSub = job.sub;
+  await touchJob(jobId);
 
-  const userAccessToken = principalUserSub ? await getUserAccessToken(principalUserSub) : null;
+  const userAccessToken = await getUserAccessToken(principalUserSub);
   if (!userAccessToken) {
     console.warn("[rasa-proxy] User token unavailable", createTraceLogContext(traceId, {
-      senderId,
       principalUserSub,
     }));
     return createProxyErrorResponse("User token unavailable", 401, {
@@ -328,7 +297,7 @@ export async function POST(req: NextRequest) {
     method,
     path: request.path,
     url,
-    senderId,
+    principalUserSub,
   }));
 
   const controller = new AbortController();

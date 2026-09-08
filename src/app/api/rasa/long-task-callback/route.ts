@@ -26,9 +26,6 @@ type CallbackControl = {
 };
 
 type CallbackPayload = {
-  // Kept only for anomaly logging against the jobId-resolved identity --
-  // never authoritative. See the jobId resolution in POST below.
-  senderId?: unknown;
   events?: unknown;
   controls?: unknown;
   traceId?: unknown;
@@ -132,42 +129,22 @@ export async function POST(req: NextRequest) {
   const payload = body as CallbackPayload;
   const traceId = resolveTraceId(req, payload as unknown as Record<string, unknown>);
 
-  // Identity for this callback is resolved server-side from the jobId
-  // minted (and stored) by api/rasa/route.ts when the job started -- never
-  // from anything the caller supplies in the request. This replaces the
-  // earlier senderId-echo comparison, which only proved the caller could
-  // repeat a string back, not that it was entitled to act as that sender.
+  // Identity for this callback is always resolved server-side from the
+  // jobId minted (and stored) when the job started -- never from anything
+  // the caller supplies in the request.
   const callbackJobId = req.nextUrl.searchParams.get("jobId")?.trim() || null;
   if (!callbackJobId) {
-    console.warn("[long-task-callback] Missing jobId", createTraceLogContext(traceId, {
-      bodySenderId: typeof payload.senderId === "string" ? payload.senderId : null,
-    }));
+    console.warn("[long-task-callback] Missing jobId", createTraceLogContext(traceId));
     return createTraceErrorResponse("Missing jobId", 400, traceId);
   }
 
   const job = await getJob(callbackJobId);
   if (!job) {
-    console.warn("[long-task-callback] Unknown or expired jobId", createTraceLogContext(traceId, {
-      callbackJobId,
-      bodySenderId: typeof payload.senderId === "string" ? payload.senderId : null,
-    }));
+    console.warn("[long-task-callback] Unknown or expired jobId", createTraceLogContext(traceId, { callbackJobId }));
     return createTraceErrorResponse("Unknown or expired job", 401, traceId);
   }
 
   const senderId = buildRasaSenderId(job.sub, job.threadId);
-  if (
-    typeof payload.senderId === "string" &&
-    payload.senderId.trim() &&
-    payload.senderId.trim() !== senderId
-  ) {
-    // Anomaly, not a rejection: the jobId lookup is already authoritative,
-    // but a disagreeing body senderId is worth surfacing for investigation.
-    console.warn("[long-task-callback] body senderId disagrees with jobId-resolved sender", createTraceLogContext(traceId, {
-      callbackJobId,
-      bodySenderId: payload.senderId,
-      resolvedSenderId: senderId,
-    }));
-  }
 
   const trackerEvents = extractTrackerEvents(payload, traceId);
   const controls = extractControls(payload, traceId);
