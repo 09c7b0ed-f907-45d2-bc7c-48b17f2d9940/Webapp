@@ -6,6 +6,7 @@ const getUserAccessTokenMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
 const getJobMock = vi.hoisted(() => vi.fn());
 const touchJobMock = vi.hoisted(() => vi.fn());
+const verifyActionServiceBearerMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/rasaSender", () => ({
   parseRasaSenderId: parseRasaSenderIdMock,
@@ -18,6 +19,10 @@ vi.mock("@/lib/userTokenVault", () => ({
 vi.mock("@/lib/jobStore", () => ({
   getJob: getJobMock,
   touchJob: touchJobMock,
+}));
+
+vi.mock("@/lib/keycloakIntrospect", () => ({
+  verifyActionServiceBearer: verifyActionServiceBearerMock,
 }));
 
 vi.mock("@/lib/traceId", () => ({
@@ -34,7 +39,7 @@ function makeRequest(body: Record<string, unknown>, token = "svc-token") {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-action-server-token": token,
+      authorization: `Bearer ${token}`,
     },
     body: JSON.stringify(body),
   });
@@ -48,8 +53,18 @@ describe("POST /api/rasa-proxy", () => {
     fetchMock.mockReset();
     getJobMock.mockReset();
     touchJobMock.mockReset();
-    process.env.ACTION_SERVER_TOKEN = "svc-token";
+    verifyActionServiceBearerMock.mockReset();
+    verifyActionServiceBearerMock.mockResolvedValue(true);
     process.env.RASA_PROXY_TARGETS = JSON.stringify({ graphql: "http://upstream.test" });
+  });
+
+  it("returns 401 when the caller's service credentials don't verify", async () => {
+    verifyActionServiceBearerMock.mockResolvedValue(false);
+
+    const { POST } = await import("@/app/api/rasa-proxy/route");
+    const res = await POST(makeRequest({ jobId: "job-1", target: "graphql", request: { path: "/x" } }));
+
+    expect(res.status).toBe(401);
   });
 
   it("resolves identity via jobId when present, ignoring any senderId in the body", async () => {

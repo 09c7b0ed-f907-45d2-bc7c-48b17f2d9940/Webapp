@@ -10,7 +10,6 @@ import {
 } from "@/lib/traceId";
 
 const FETCH_TIMEOUT_MS = Number(process.env.RASA_PROXY_TIMEOUT_MS ?? 120000);
-const ACTION_SERVER_TOKEN = process.env.ACTION_SERVER_TOKEN;
 
 type ProxyRequestBody = {
   jobId?: unknown;
@@ -184,36 +183,18 @@ function createUpstreamFailureResponse(params: {
 export async function POST(req: NextRequest) {
   const traceId = readTraceId(req.headers);
 
-  if (!ACTION_SERVER_TOKEN) {
-    console.error(
-      "[rasa-proxy] Missing ACTION_SERVER_TOKEN environment variable",
-      createTraceLogContext(traceId)
-    );
-    return createProxyErrorResponse("Server misconfiguration", 500, {
-      traceId,
-      reason: "ACTION_SERVER_TOKEN is not configured",
-    });
-  }
-
-  // Real service identity (Keycloak client-credentials token, verified via
-  // introspection + azp claim) is preferred when Action sends one; falls
-  // back to the static shared secret during the rollout window before
-  // Action's Keycloak service-account client exists everywhere.
+  // Action's own service identity -- a Keycloak client-credentials token,
+  // verified via introspection + azp claim. This is the only proof of
+  // identity this endpoint accepts; the static ACTION_SERVER_TOKEN shared
+  // secret it replaced has been removed.
   const viaKeycloak = await verifyActionServiceBearer(req.headers.get("authorization"));
   if (!viaKeycloak) {
-    const serviceToken = req.headers.get("x-action-server-token");
-    if (!serviceToken || serviceToken !== ACTION_SERVER_TOKEN) {
-      console.warn("[rasa-proxy] Unauthorized request", createTraceLogContext(traceId));
-      return createProxyErrorResponse("Unauthorized", 401, {
-        traceId,
-        reason: "Missing or invalid service credentials",
-      });
-    }
+    console.warn("[rasa-proxy] Unauthorized request", createTraceLogContext(traceId));
+    return createProxyErrorResponse("Unauthorized", 401, {
+      traceId,
+      reason: "Missing or invalid service credentials",
+    });
   }
-  console.info(
-    `[rasa-proxy] Authenticated via ${viaKeycloak ? "keycloak service account" : "static ACTION_SERVER_TOKEN"}`,
-    createTraceLogContext(traceId)
-  );
 
   let body: ProxyRequestBody;
   try {

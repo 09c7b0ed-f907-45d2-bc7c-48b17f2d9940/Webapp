@@ -1,13 +1,6 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// Set the callback token env var before the module is imported so the
-// module-level constant `LONG_TASK_CALLBACK_TOKEN` reads the right value.
-// NOTE: do NOT reference outer `const` from vi.hoisted — it runs before the
-// module body, so outer bindings are in the temporal dead zone.
-vi.hoisted(() => { process.env.LONG_TASK_CALLBACK_TOKEN = "test-callback-token"; });
-const VALID_TOKEN = "test-callback-token";
-
 // --- hoisted mocks ---
 const fetchRasaTrackerEventsMock = vi.hoisted(() => vi.fn());
 const mapRasaTrackerEventsMock = vi.hoisted(() => vi.fn());
@@ -19,6 +12,7 @@ const withRasaAuthMock = vi.hoisted(() => vi.fn((url: string) => url));
 const fetchMock = vi.hoisted(() => vi.fn());
 const getJobMock = vi.hoisted(() => vi.fn());
 const touchJobMock = vi.hoisted(() => vi.fn());
+const verifyActionServiceBearerMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/rasaHistory", () => ({
   fetchRasaTrackerEvents: fetchRasaTrackerEventsMock,
@@ -36,6 +30,9 @@ vi.mock("@/lib/rasaConfig", () => ({
 vi.mock("@/lib/jobStore", () => ({
   getJob: getJobMock,
   touchJob: touchJobMock,
+}));
+vi.mock("@/lib/keycloakIntrospect", () => ({
+  verifyActionServiceBearer: verifyActionServiceBearerMock,
 }));
 vi.mock("@/lib/traceId", () => ({
   readTraceId: () => null,
@@ -60,6 +57,8 @@ beforeEach(() => {
   fetchMock.mockReset();
   getJobMock.mockReset();
   touchJobMock.mockReset();
+  verifyActionServiceBearerMock.mockReset();
+  verifyActionServiceBearerMock.mockResolvedValue(true);
   withRasaAuthMock.mockImplementation((url: string) => url);
   mapRasaTrackerEventsMock.mockReturnValue([]);
   publishCommittedHistoryItemsMock.mockReturnValue(0);
@@ -74,9 +73,8 @@ import { POST } from "@/app/api/rasa/long-task-callback/route";
 
 function makeRequest(
   body: Record<string, unknown>,
-  opts: { token?: string; jobId?: string } = {}
+  opts: { jobId?: string } = {}
 ): NextRequest {
-  const token = opts.token ?? VALID_TOKEN;
   const jobId = "jobId" in opts ? opts.jobId : "job-1";
   const url = jobId
     ? `http://localhost/api/rasa/long-task-callback?jobId=${encodeURIComponent(jobId)}`
@@ -85,17 +83,16 @@ function makeRequest(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-long-task-callback-token": token,
+      authorization: "Bearer test-service-token",
     },
     body: JSON.stringify(body),
   });
 }
 
 describe("POST /api/rasa/long-task-callback", () => {
-  it("returns 401 with wrong token", async () => {
-    const res = await POST(
-      makeRequest({ senderId: "u1:thread:1", events: [], controls: [] }, { token: "wrong" })
-    );
+  it("returns 401 when the caller's service credentials don't verify", async () => {
+    verifyActionServiceBearerMock.mockResolvedValue(false);
+    const res = await POST(makeRequest({ senderId: "u1:thread:1", events: [], controls: [] }));
     expect(res.status).toBe(401);
   });
 

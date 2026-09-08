@@ -43,11 +43,12 @@ function extractBearerToken(authHeader: string | null): string | null {
 }
 
 // Verifies a bearer token belongs to Action's own Keycloak service-account
-// client (client_credentials grant, not a real user) -- this is what
-// replaces "only Action holds ACTION_SERVER_TOKEN" as the guarantee that
-// the caller really is the Action service. Returns false (never throws) if
-// ACTION_SERVICE_CLIENT_ID isn't configured yet -- callers should fall back
-// to the legacy static-token check in that case, not treat this as a pass.
+// client (client_credentials grant, not a real user) -- this is the only
+// proof of identity the Action-facing endpoints accept; the static
+// ACTION_SERVER_TOKEN/LONG_TASK_CALLBACK_TOKEN shared secrets this replaced
+// have been removed. Returns false (never throws) if ACTION_SERVICE_CLIENT_ID
+// isn't configured -- callers should treat that as an unauthorized request,
+// not a reason to skip the check.
 export async function verifyActionServiceBearer(authHeader: string | null): Promise<boolean> {
   const expectedClientId = process.env.ACTION_SERVICE_CLIENT_ID?.trim();
   if (!expectedClientId) return false;
