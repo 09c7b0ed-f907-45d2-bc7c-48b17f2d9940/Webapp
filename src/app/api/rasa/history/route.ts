@@ -51,6 +51,7 @@ export async function GET(req: NextRequest) {
       cookies: cookiesMap,
       userId: userSub,
       threadId,
+      accessToken: session?.accessToken,
     });
     if (!thread) {
       console.warn("[rasa][history] Thread not found for request", {
