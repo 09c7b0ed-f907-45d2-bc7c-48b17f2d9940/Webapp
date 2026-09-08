@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
     cookies: cookiesMap,
     userId: identity.userId,
     threadId,
+    accessToken: session?.accessToken,
   });
 
   let historyResult:
