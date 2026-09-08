@@ -206,6 +206,26 @@ export default function TopBar() {
 		}
 	}, [language]);
 
+	// Plain signOut() only clears this app's own session -- Keycloak keeps
+	// its own SSO session alive, so logging back in would silently reuse it
+	// instead of prompting. Fetch the Keycloak end-session URL first (needs
+	// the still-valid session), then clear the local session, then send the
+	// browser there to actually end the Keycloak session too.
+	const handleSignOut = async () => {
+		let keycloakLogoutUrl: string | null = null;
+		try {
+			const res = await fetch("/api/auth/keycloak-logout-url");
+			if (res.ok) {
+				const data = await res.json();
+				keycloakLogoutUrl = typeof data?.url === "string" ? data.url : null;
+			}
+		} catch {
+			// Fall back to local-only sign-out below.
+		}
+		await signOut({ redirect: false });
+		window.location.href = keycloakLogoutUrl || "/";
+	};
+
 	return (
 		<div
 			className="w-full flex items-center justify-between px-4 py-4 border-b h-auto min-h-0 flex-shrink-0 z-10 bg-background"
@@ -340,7 +360,7 @@ export default function TopBar() {
 				<Button variant="ghost" className="border rounded hover:bg-black/75 dark:hover:bg-white hover:text-white transition-colors dark:hover:text-black" onClick={() => setDark(!dark)} aria-label={t('topbar.toggleDarkMode')}>
 					{dark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
 				</Button>
-				<Button variant="ghost" className="border rounded hover:bg-destructive hover:text-white transition-colors" onClick={() => signOut()} aria-label={t('topbar.logout')}>
+				<Button variant="ghost" className="border rounded hover:bg-destructive hover:text-white transition-colors" onClick={() => void handleSignOut()} aria-label={t('topbar.logout')}>
 					<LogOutIcon className="w-4 h-4" />
 					{t( "topbar.logout")}
 				</Button>
