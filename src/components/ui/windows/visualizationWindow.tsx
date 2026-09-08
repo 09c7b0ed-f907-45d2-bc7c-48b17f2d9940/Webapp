@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { useChatStore } from "@/store/useChatStore";
 import type { ChartDTO } from "@/models/dto/charts";
 import { LineChartView } from "@/components/charts/LineChartView";
@@ -20,6 +20,7 @@ import { resolveEffectiveVisualizationSelection } from "@/components/ui/windows/
 import '@/i18n';
 
 export default function VisualizationWindow() {
+  const [showReferenceLines, setShowReferenceLines] = useState(true);
   const { currentThreadId } = useThread();
   const visualization = useChatStore((s) => s.visualization);
   const setVisualization = useChatStore((s) => s.setVisualization);
@@ -104,7 +105,7 @@ export default function VisualizationWindow() {
   }
 
   if (chart.type === "BAR") {
-    content = <BarChartView chart={chart} />;
+    content = <BarChartView chart={chart} showReferenceLines={showReferenceLines} onToggleReferenceLines={setShowReferenceLines} />;
   }
 
   if (chart.type === "PIE") {

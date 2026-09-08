@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { LineChartDTO } from "@/models/dto/charts";
-import { trimEmptyEdgeChartPoints, getDynamicCategoryTickLayout, getSeriesColor } from "@/lib/chart-utils";
+import { getDynamicCategoryTickLayout, getSeriesColor } from "@/lib/chart-utils";
 import { useElementWidth } from "@/hooks/use-element-width";
 
 interface Props {
@@ -41,10 +41,9 @@ export function LineChartView({ chart }: Props) {
     });
     return point;
   });
-  const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
   const tickLayout = getDynamicCategoryTickLayout({
     chartWidthPx,
-    pointCount: trimmedData.length,
+    pointCount: data.length,
     rotateThresholdPx: 30,
     horizontalMinTickSpacingPx: 15,
     rotatedMinTickSpacingPx: 30,
@@ -57,7 +56,7 @@ export function LineChartView({ chart }: Props) {
     <div className="h-full w-full flex flex-col flex-1">
       <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
       <div ref={chartContainerRef} className="flex-1 min-h-0">
-          <LineChart data={trimmedData} margin={{ top: 20, right: 20, bottom: 0, left: 20 }} responsive={true} style={{ width: '100%', height: '100%' }}>
+          <LineChart data={data} margin={{ top: 20, right: 20, bottom: 0, left: 20 }} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 height={tickLayout.height}

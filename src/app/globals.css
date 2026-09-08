@@ -77,6 +77,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  /* --aa-gold: #cdc74d;
+  --aa-diamond: #6ec2b4;
+  --aa-platinum: #000000; */
+  --aa-gold: #dcb76b;
+  --aa-platinum: #848484;
+  --aa-diamond: #373737;
 }
 
 html {
@@ -115,6 +121,12 @@ html {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  /* --aa-gold: #fdf55f;
+  --aa-diamond: #8cf4e2;
+  --aa-platinum: #ffffff; */
+  --aa-gold: #dcb76b;
+  --aa-platinum: #848484;
+  --aa-diamond: #ffffff;
 }
 
 [data-theme="resq"] {

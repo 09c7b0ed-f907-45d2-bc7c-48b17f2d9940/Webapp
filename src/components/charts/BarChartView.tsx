@@ -10,11 +10,15 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { BarChartDTO } from "@/models/dto/charts";
-import { trimEmptyEdgeChartPoints, getDynamicCategoryTickLayout, getSeriesColor } from "@/lib/chart-utils";
+import { getDynamicCategoryTickLayout, getSeriesColor } from "@/lib/chart-utils";
+import { ChartReferenceLines } from "./ChartReferenceLines";
+import { AngelsWingIcon } from "@/components/ui/icons/angels-wing-icon";
 import { useElementWidth } from "@/hooks/use-element-width";
 
 interface Props {
   chart: BarChartDTO;
+  showReferenceLines?: boolean;
+  onToggleReferenceLines?: (show: boolean) => void;
 }
 
 function formatNumericBinValue(value: number) {
@@ -47,7 +51,7 @@ function buildBinLabel(
   return String(bin);
 }
 
-export function BarChartView({ chart }: Props) {
+export function BarChartView({ chart, showReferenceLines = true, onToggleReferenceLines }: Props) {
   const { elementRef: chartContainerRef, widthPx: chartWidthPx } = useElementWidth<HTMLDivElement>(1000);
   const seriesNames = chart.series.map((series) => series.name);
   const bins: (string | number)[] = [];
@@ -87,10 +91,9 @@ export function BarChartView({ chart }: Props) {
     });
     return point;
   });
-  const trimmedData = trimEmptyEdgeChartPoints(data, seriesNames);
   const tickLayout = getDynamicCategoryTickLayout({
     chartWidthPx: chartWidthPx,
-    pointCount: trimmedData.length,
+    pointCount: data.length,
     rotateThresholdPx: 70,
     horizontalMinTickSpacingPx: 10,
     rotatedMinTickSpacingPx: 30,
@@ -102,11 +105,30 @@ export function BarChartView({ chart }: Props) {
   const layout: "horizontal" | "vertical" =
     (chart.orientation ?? "vertical") === "horizontal" ? "vertical" : "horizontal";
 
+  const referenceLines = [
+    { value: 20, label: "Gold", color: "var(--aa-gold)" },
+    { value: 40, label: "Diamond", color: "var(--aa-diamond)" },
+    { value: 30, label: "Platinum", color: "var(--aa-platinum)" },
+  ];
+
   return (
     <div className="h-full w-full flex flex-col flex-1">
-      <h3 className="text-lg font-semibold mb-2 text-primary">{chart.metadata.title}</h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-lg font-semibold text-primary">{chart.metadata.title}</h3>
+        {onToggleReferenceLines && (
+          <button
+            onClick={() => onToggleReferenceLines(!showReferenceLines)}
+            className="inline-flex items-center gap-2 px-3 py-1 text-sm rounded border border-border hover:bg-accent transition-colors"
+            title={showReferenceLines ? "Hide reference lines" : "Show reference lines"}
+            aria-label={showReferenceLines ? "Hide reference lines" : "Show reference lines"}
+          >
+            <span>{showReferenceLines ? "Hide" : "Show"} Angels Awards</span>
+            <AngelsWingIcon className="h-5 w-5 object-contain" />
+          </button>
+        )}
+      </div>
       <div ref={chartContainerRef} className="flex-1 min-h-0">
-          <RCBarChart data={trimmedData} layout={layout} responsive={true} style={{ width: '100%', height: '100%' }}>
+          <RCBarChart data={data} layout={layout} responsive={true} style={{ width: '100%', height: '100%' }}>
             <CartesianGrid strokeDasharray="3 3" />
             {layout === "horizontal" ? (
               <>
@@ -158,6 +180,7 @@ export function BarChartView({ chart }: Props) {
               animationEasing="spring" 
               contentStyle={{ backgroundColor: "var(--card)", borderRadius: "var(--radius)",  minWidth: "100px", fontSize: "0.75rem", fontWeight: "bold" }}
             />
+            {showReferenceLines && <ChartReferenceLines lines={referenceLines} />}
             <Legend />
             {chart.series.map((s, i) => (
               <Bar
