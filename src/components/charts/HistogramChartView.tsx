@@ -23,7 +23,7 @@ export function HistogramChartView({ chart }: Props) {
 
   const data = chart.data.map((bin, index) => ({
     index,
-    range: `${bin.range_start} – ${bin.range_end}`,
+    range: bin.label ?? `${bin.range_start} – ${bin.range_end}`,
     value: chart.cumulative ? bin.density ?? bin.frequency : bin.frequency,
   }));
 

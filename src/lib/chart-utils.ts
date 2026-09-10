@@ -1,3 +1,5 @@
+import type { ChartSeries } from "@/models/dto/types";
+
 export type ChartPointValue = number | string | null;
 
 const SERIES_HUES = [210, 20, 135, 280, 0, 180, 45, 320, 95, 250, 160, 10];
@@ -74,6 +76,46 @@ export function getDynamicCategoryTickLayout({
     textAnchor: angle === 0 ? "middle" : "end",
     height: angle === 0 ? labelHeightSmall : labelHeightBig,
   };
+}
+
+export function getPointLabelMap(series: Pick<ChartSeries, "data">[]) {
+  const labelMap = new Map<string, string>();
+
+  for (const currentSeries of series) {
+    for (const point of currentSeries.data) {
+      if (point.label) {
+        labelMap.set(String(point.x), point.label);
+      }
+    }
+  }
+
+  return labelMap;
+}
+
+export function buildNumericBucketLabel(
+  bin: string | number,
+  index: number,
+  bins: (string | number)[],
+  preferredLabel?: string,
+) {
+  if (preferredLabel) {
+    return preferredLabel;
+  }
+
+  if (typeof bin === "number") {
+    const nextBin = bins[index + 1];
+    if (typeof nextBin === "number") {
+      return `${bin}-${nextBin}`;
+    }
+
+    const previousBin = bins[index - 1];
+    if (typeof previousBin === "number") {
+      const step = bin - previousBin;
+      return `${bin}-${bin + step}`;
+    }
+  }
+
+  return String(bin);
 }
 
 export function getSeriesColor(index: number) {

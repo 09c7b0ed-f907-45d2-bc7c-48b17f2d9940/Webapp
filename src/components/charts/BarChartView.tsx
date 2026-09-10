@@ -10,41 +10,16 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { BarChartDTO } from "@/models/dto/charts";
-import { trimEmptyEdgeChartPoints, getDynamicCategoryTickLayout, getSeriesColor } from "@/lib/chart-utils";
+import {
+  trimEmptyEdgeChartPoints,
+  getDynamicCategoryTickLayout,
+  getSeriesColor,
+  buildNumericBucketLabel,
+} from "@/lib/chart-utils";
 import { useElementWidth } from "@/hooks/use-element-width";
 
 interface Props {
   chart: BarChartDTO;
-}
-
-function formatNumericBinValue(value: number) {
-  return Number.isInteger(value) ? String(value) : String(value);
-}
-
-function buildBinLabel(
-  bin: string | number,
-  index: number,
-  bins: (string | number)[],
-  preferredLabel?: string,
-) {
-  if (preferredLabel) {
-    return preferredLabel;
-  }
-
-  if (typeof bin === "number") {
-    const nextBin = bins[index + 1];
-    if (typeof nextBin === "number") {
-      return `${formatNumericBinValue(bin)}-${formatNumericBinValue(nextBin)}`;
-    }
-
-    const previousBin = bins[index - 1];
-    if (typeof previousBin === "number") {
-      const step = bin - previousBin;
-      return `${formatNumericBinValue(bin)}-${formatNumericBinValue(bin + step)}`;
-    }
-  }
-
-  return String(bin);
 }
 
 export function BarChartView({ chart }: Props) {
@@ -79,7 +54,7 @@ export function BarChartView({ chart }: Props) {
   const data = bins.map((bin, index) => {
     const point: Record<string, number | string> = {
       bin,
-      binLabel: buildBinLabel(bin, index, bins, binLabels.get(String(bin))),
+      binLabel: buildNumericBucketLabel(bin, index, bins, binLabels.get(String(bin))),
     };
     chart.series.forEach((s) => {
       const val = s.data.find((p) => String(p.x) === String(bin))?.y ?? NaN;
